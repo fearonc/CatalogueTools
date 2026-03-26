@@ -21,19 +21,13 @@
 	// ==========================================
 	function runGodMode() {
 		document.querySelectorAll('*').forEach(el => {
-			// Do not delete our own tool palette!
 			if (el.id === PALETTE_ID || el.closest(`#${PALETTE_ID}`)) return;
-
 			const p = window.getComputedStyle(el).position;
-			if (p === 'fixed' || p === 'sticky') {
-				el.remove();
-			}
+			if (p === 'fixed' || p === 'sticky') el.remove();
 		});
-		// Force restore scrolling
 		document.body.style.setProperty('overflow', 'auto', 'important');
 		document.documentElement.style.setProperty('overflow', 'auto', 'important');
 		
-		// Optional: Little visual feedback on the button
 		const btn = document.querySelector('[data-s="godmode"]');
 		if(btn) {
 			const original = btn.textContent;
@@ -49,7 +43,6 @@
 	const overlayDiv = document.createElement('div');
 	const tooltipDiv = document.createElement('div');
 	
-	// Setup Inspector Elements
 	overlayDiv.id = "__tool_inspector_overlay__";
 	tooltipDiv.id = "__tool_inspector_tooltip__";
 	Object.assign(overlayDiv.style, {
@@ -72,7 +65,7 @@
 			if (el.id) {
 				selector += '#' + el.id;
 				path.unshift(selector);
-				break; // IDs are unique, can stop here
+				break;
 			} else {
 				let sib = el, nth = 1;
 				while (sib = sib.previousElementSibling) {
@@ -88,46 +81,29 @@
 
 	function onInspectorHover(e) {
 		if (e.target.closest(`#${PALETTE_ID}`)) {
-			overlayDiv.style.display = 'none';
-			tooltipDiv.style.display = 'none';
-			return;
+			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none'; return;
 		}
 		const rect = e.target.getBoundingClientRect();
 		overlayDiv.style.display = 'block';
-		overlayDiv.style.top = rect.top + 'px';
-		overlayDiv.style.left = rect.left + 'px';
-		overlayDiv.style.width = rect.width + 'px';
-		overlayDiv.style.height = rect.height + 'px';
+		overlayDiv.style.top = rect.top + 'px'; overlayDiv.style.left = rect.left + 'px';
+		overlayDiv.style.width = rect.width + 'px'; overlayDiv.style.height = rect.height + 'px';
 
 		const path = getCssPath(e.target);
-		tooltipDiv.style.display = 'block';
-		tooltipDiv.textContent = path;
-		
-		// Keep tooltip on screen
-		let tTop = rect.bottom + 5;
-		let tLeft = rect.left;
-		if (tTop + 30 > window.innerHeight) tTop = rect.top - 30; // pop above if at bottom
-		
-		tooltipDiv.style.top = tTop + 'px';
-		tooltipDiv.style.left = tLeft + 'px';
+		tooltipDiv.style.display = 'block'; tooltipDiv.textContent = path;
+		let tTop = rect.bottom + 5, tLeft = rect.left;
+		if (tTop + 30 > window.innerHeight) tTop = rect.top - 30;
+		tooltipDiv.style.top = tTop + 'px'; tooltipDiv.style.left = tLeft + 'px';
 	}
 
 	function onInspectorClick(e) {
 		if (e.target.closest(`#${PALETTE_ID}`)) return;
-		e.preventDefault();
-		e.stopPropagation();
-
-		const path = getCssPath(e.target);
-		navigator.clipboard.writeText(path).catch(() => {});
-		
-		// Visual feedback
+		e.preventDefault(); e.stopPropagation();
+		navigator.clipboard.writeText(getCssPath(e.target)).catch(() => {});
 		tooltipDiv.textContent = "Copied to clipboard!";
-		tooltipDiv.style.background = "#059669"; // Green
-		
+		tooltipDiv.style.background = "#059669";
 		setTimeout(() => {
-			tooltipDiv.style.background = "#111827"; // Reset
-			toggleInspector(); // Turn off inspector after selection
-			refreshStatus();
+			tooltipDiv.style.background = "#111827";
+			toggleInspector(); refreshStatus();
 		}, 800);
 	}
 
@@ -139,8 +115,7 @@
 		} else {
 			document.removeEventListener('mouseover', onInspectorHover, { capture: true });
 			document.removeEventListener('click', onInspectorClick, { capture: true });
-			overlayDiv.style.display = 'none';
-			tooltipDiv.style.display = 'none';
+			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none';
 		}
 	}
 
@@ -150,21 +125,304 @@
 	function togglePasswords() {
 		const inputs = Array.from(document.querySelectorAll('input'));
 		const revealed = inputs.filter(i => i.dataset.tpRevealed === 'true');
-		
 		if (revealed.length > 0) {
-			// Turn them back to passwords
-			revealed.forEach(i => {
-				i.type = 'password';
-				delete i.dataset.tpRevealed;
-			});
+			revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
 		} else {
-			// Find actual passwords and reveal them
-			const passwords = inputs.filter(i => i.type === 'password');
-			passwords.forEach(i => {
-				i.type = 'text';
-				i.dataset.tpRevealed = 'true';
+			inputs.filter(i => i.type === 'password').forEach(i => { i.type = 'text'; i.dataset.tpRevealed = 'true'; });
+		}
+	}
+
+	// ==========================================
+	// TOOL 4: IMAGE REORDER (ANGULAR/UI-BOOTSTRAP)
+	// ==========================================
+	async function runImageReorderTool() {
+		const PANEL_SELECTOR = 'div.panel.panel-default';
+		const HEADING_SELECTOR = '.panel-heading';
+		const TABLE_BODY_SELECTOR = 'table.table.table-striped tbody';
+		const ROW_SELECTOR = 'tr[ng-repeat*="imageDetails in imageAndSubsiteDetails.images"]';
+		const THUMB_SELECTOR = 'img.image-thumbnail';
+		const ORDER_CELL_SELECTOR = 'td.center.ng-binding';
+		const REORDER_BTN_SELECTOR = 'button.btn.btn-primary[ng-click^="reorderImage"]';
+		const MODAL_SELECTOR = '.modal-dialog';
+		const MODAL_INPUT_SELECTOR = `${MODAL_SELECTOR} input[ng-model="value"]`;
+		const MODAL_OK_SELECTOR = `${MODAL_SELECTOR} .modal-footer .btn-success`;
+		const TEMP_SLOT = 999;
+		const OPEN_TIMEOUT_MS = 7000;
+		const CLOSE_TIMEOUT_MS = 15000;
+		const STEP_GAP_MS = 60;
+
+		if (window.__thgReorderToolOpen) return;
+		window.__thgReorderToolOpen = true;
+		refreshStatus(); // Trigger UI update for the tool belt panel
+
+		const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+		const normSrc = (s) => String(s || '').split('?')[0].toLowerCase();
+
+		async function waitFor(sel, timeoutMs) {
+			const t0 = Date.now();
+			while (Date.now() - t0 < timeoutMs) {
+				const el = document.querySelector(sel);
+				if (el) return el;
+				await sleep(20);
+			}
+			throw new Error(`Timed out waiting for: ${sel}`);
+		}
+
+		async function waitGone(sel, timeoutMs) {
+			const t0 = Date.now();
+			while (Date.now() - t0 < timeoutMs) {
+				if (!document.querySelector(sel)) return;
+				await sleep(20);
+			}
+		}
+
+		function setModalValueViaAngularScope(value) {
+			const input = document.querySelector(MODAL_INPUT_SELECTOR);
+			if (!input) throw new Error('Modal input not found');
+			const ng = window.angular;
+			if (!ng?.element) throw new Error('Angular not available on window');
+			const el = ng.element(input);
+			const scope = el.scope?.();
+			if (!scope) throw new Error('Could not get Angular scope for modal input');
+			scope.$apply(() => { scope.value = String(value); });
+		}
+
+		function getHeadingText(panel) {
+			const heading = panel.querySelector(HEADING_SELECTOR);
+			if (!heading) return 'Images';
+			const parts = Array.from(heading.querySelectorAll('span')).filter(sp => {
+				const cs = window.getComputedStyle(sp);
+				return cs.display !== 'none' && cs.visibility !== 'hidden';
+			}).map(sp => sp.textContent.replace(/\s+/g, ' ').trim()).filter(Boolean);
+			return parts.join(' | ').trim() || heading.textContent.replace(/\s+/g, ' ').trim() || 'Images';
+		}
+
+		function getPanelRows(panel) {
+			const tbody = panel.querySelector(TABLE_BODY_SELECTOR);
+			if (!tbody) return [];
+			return Array.from(tbody.querySelectorAll(ROW_SELECTOR));
+		}
+
+		function readPanelState(panel) {
+			const rows = getPanelRows(panel);
+			const state = rows.map((row, idx) => {
+				const img = row.querySelector(THUMB_SELECTOR);
+				const src = normSrc(img?.currentSrc || img?.src || '');
+				const orderText = row.querySelector(ORDER_CELL_SELECTOR)?.textContent?.trim();
+				const order = Number(orderText) || (idx + 1);
+				return { src, order, row };
+			}).filter(x => x.src);
+			state.sort((a, b) => a.order - b.order);
+			return state;
+		}
+
+		function findRowInPanelBySrc(panel, srcNorm) {
+			for (const row of getPanelRows(panel)) {
+				const img = row.querySelector(THUMB_SELECTOR);
+				const rowSrc = normSrc(img?.currentSrc || img?.src || '');
+				if (rowSrc === srcNorm) return row;
+			}
+			return null;
+		}
+
+		async function setOrderForSrcInPanel(panel, srcNorm, newOrder) {
+			const row = findRowInPanelBySrc(panel, srcNorm);
+			if (!row) throw new Error(`Could not find row for src in this section: ${srcNorm}`);
+			const btn = row.querySelector(REORDER_BTN_SELECTOR);
+			if (!btn) throw new Error('Reorder button not found on row');
+			btn.click();
+			await waitFor(MODAL_SELECTOR, OPEN_TIMEOUT_MS);
+			await waitFor(MODAL_INPUT_SELECTOR, OPEN_TIMEOUT_MS);
+			await waitFor(MODAL_OK_SELECTOR, OPEN_TIMEOUT_MS);
+			setModalValueViaAngularScope(newOrder);
+			document.querySelector(MODAL_OK_SELECTOR).click();
+			await waitGone(MODAL_SELECTOR, CLOSE_TIMEOUT_MS);
+			await sleep(STEP_GAP_MS);
+		}
+
+		const overlay = document.createElement('div');
+		overlay.style.cssText = `position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:2147483647; display:flex; align-items:center; justify-content:center; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;`;
+		const ui = document.createElement('div');
+		ui.style.cssText = `width:min(980px,94vw); height:min(820px,90vh); background:#fff; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.35); display:flex; flex-direction:column; overflow:hidden;`;
+		const header = document.createElement('div');
+		header.style.cssText = `padding:14px 16px; border-bottom:1px solid #e6e6e6; display:flex; justify-content:space-between; gap:10px; align-items:center;`;
+		header.innerHTML = `
+			<div>
+				<div style="font-size:16px; font-weight:650;">Reorder images (by section)</div>
+				<div style="font-size:12px; color:#666;">Each Channel/Locale table is handled independently. Temp slot: ${TEMP_SLOT}.</div>
+			</div>
+			<div style="display:flex; gap:8px;">
+				<button data-a="close" style="padding:8px 10px; border:1px solid #ccc; background:#fff; border-radius:8px; cursor:pointer;">Close</button>
+				<button data-a="apply" style="padding:8px 10px; border:1px solid #111; background:#111; color:#fff; border-radius:8px; cursor:pointer;">Apply</button>
+			</div>`;
+		const body = document.createElement('div');
+		body.style.cssText = `padding:12px; overflow:auto; flex:1;`;
+		const status = document.createElement('div');
+		status.style.cssText = `font-size:12px; color:#444; margin:0 0 10px 0; line-height:1.4; white-space:pre-wrap;`;
+		
+		body.append(status);
+		ui.append(header, body);
+		overlay.append(ui);
+		document.body.appendChild(overlay);
+
+		const setStatus = (t) => (status.textContent = t);
+
+		function close() {
+			window.__thgReorderToolOpen = false;
+			document.removeEventListener('keydown', onKeyDown, true);
+			overlay.remove();
+			refreshStatus(); // Notify the main UI window to update state
+		}
+
+		function onKeyDown(e) { if (e.key === 'Escape') close(); }
+		document.addEventListener('keydown', onKeyDown, true);
+		header.querySelector('[data-a="close"]').addEventListener('click', close);
+
+		const panels = Array.from(document.querySelectorAll(PANEL_SELECTOR)).filter(p => p.querySelector(TABLE_BODY_SELECTOR) && getPanelRows(p).length);
+		if (!panels.length) {
+			close();
+			alert('No image tables found on this page.');
+			return;
+		}
+
+		const sections = panels.map((panel, idx) => {
+			const title = getHeadingText(panel) || `Section ${idx + 1}`;
+			const initial = readPanelState(panel);
+			const wrap = document.createElement('div');
+			wrap.style.cssText = `border:1px solid #e6e6e6; border-radius:12px; padding:10px; margin:10px 0;`;
+			const h = document.createElement('div');
+			h.style.cssText = `font-size:13px; font-weight:650; margin:0 0 8px 0;`;
+			h.textContent = `${title} (${initial.length})`;
+			const list = document.createElement('div');
+			list.style.cssText = `display:flex; flex-direction:column; gap:8px;`;
+			wrap.append(h, list);
+			body.append(wrap);
+			return { panel, title, list, initial };
+		});
+
+		setStatus(`Detected ${sections.length} section(s):\n${sections.map(s => `• ${s.title} (${s.initial.length})`).join('\n')}\n\nDrag within a section only. Apply will reorder each section independently.`);
+
+		let dragEl = null;
+		function makeCard(item) {
+			const card = document.createElement('div');
+			card.draggable = true; card.dataset.src = item.src;
+			card.style.cssText = `display:flex; align-items:center; gap:10px; border:1px solid #ddd; border-radius:10px; padding:10px; background:#fff; cursor:grab;`;
+			const img = document.createElement('img');
+			img.src = item.src; img.style.cssText = `width:56px; height:56px; object-fit:cover; border-radius:8px; border:1px solid #eee; background:#fafafa;`;
+			const meta = document.createElement('div');
+			meta.style.cssText = `display:flex; flex-direction:column; gap:2px;`;
+			const a = document.createElement('div');
+			a.style.cssText = `font-size:13px; font-weight:650;`;
+			a.textContent = `Current: ${item.order}`;
+			const b = document.createElement('div');
+			b.style.cssText = `font-size:12px; color:#666;`;
+			b.textContent = 'New: ?';
+			meta.append(a, b);
+			const handle = document.createElement('div');
+			handle.style.cssText = `margin-left:auto; font-size:18px; color:#999; user-select:none;`;
+			handle.textContent = '⋮⋮';
+			card.append(img, meta, handle);
+			card.addEventListener('dragstart', (e) => { dragEl = card; card.style.opacity = '0.55'; e.dataTransfer.effectAllowed = 'move'; });
+			card.addEventListener('dragend', () => { dragEl = null; card.style.opacity = '1'; });
+			return card;
+		}
+
+		function wireDnD(listEl, onChange) {
+			listEl.addEventListener('dragover', (e) => e.preventDefault());
+			listEl.addEventListener('drop', (e) => e.preventDefault());
+			Array.from(listEl.children).forEach(card => {
+				card.addEventListener('dragover', (e) => { e.preventDefault(); card.style.borderColor = '#111'; });
+				card.addEventListener('dragleave', () => { card.style.borderColor = '#ddd'; });
+				card.addEventListener('drop', (e) => {
+					e.preventDefault(); card.style.borderColor = '#ddd';
+					if (!dragEl || dragEl === card) return;
+					if (dragEl.parentElement !== listEl) return;
+					const kids = Array.from(listEl.children);
+					const from = kids.indexOf(dragEl);
+					const to = kids.indexOf(card);
+					if (from < 0 || to < 0) return;
+					if (from < to) listEl.insertBefore(dragEl, card.nextSibling);
+					else listEl.insertBefore(dragEl, card);
+					onChange();
+				});
 			});
 		}
+
+		function updateNewLabels(listEl) {
+			Array.from(listEl.children).forEach((c, i) => {
+				const label = c.querySelector('div > div:nth-child(2)');
+				if (label) label.textContent = `New: ${i + 1}`;
+			});
+		}
+
+		for (const s of sections) {
+			s.initial.forEach(it => s.list.appendChild(makeCard(it)));
+			updateNewLabels(s.list);
+			wireDnD(s.list, () => updateNewLabels(s.list));
+		}
+
+		async function applySection(section, sectionIndex, totalSections) {
+			const { panel, title, list } = section;
+			const desired = Array.from(list.children).map((c, i) => ({ src: c.dataset.src, want: i + 1 }));
+			let state = readPanelState(panel);
+			const srcToOrder = new Map(state.map(x => [x.src, x.order]));
+			const orderToSrc = new Map(state.map(x => [x.order, x.src]));
+
+			if (orderToSrc.has(TEMP_SLOT)) {
+				const srcAtTemp = orderToSrc.get(TEMP_SLOT);
+				const maxOrder = Math.max(...state.map(x => x.order));
+				const bump = maxOrder + 1;
+				setStatus(`(${sectionIndex}/${totalSections}) ${title}\nTemp slot ${TEMP_SLOT} is in use. Moving that image to ${bump}...`);
+				await setOrderForSrcInPanel(panel, srcAtTemp, bump);
+				srcToOrder.set(srcAtTemp, bump);
+				orderToSrc.delete(TEMP_SLOT);
+				orderToSrc.set(bump, srcAtTemp);
+			}
+
+			for (let i = 0; i < desired.length; i++) {
+				const { src, want } = desired[i];
+				const have = srcToOrder.get(src);
+				if (have === want) continue;
+				setStatus(`(${sectionIndex}/${totalSections}) ${title}\nStep ${i + 1}/${desired.length}: place into ${want} (currently ${have})...`);
+				const srcInWant = orderToSrc.get(want);
+				if (srcInWant && srcInWant !== src) {
+					await setOrderForSrcInPanel(panel, srcInWant, TEMP_SLOT);
+					srcToOrder.set(srcInWant, TEMP_SLOT);
+					orderToSrc.set(TEMP_SLOT, srcInWant);
+					orderToSrc.delete(want);
+				}
+				await setOrderForSrcInPanel(panel, src, want);
+				srcToOrder.set(src, want);
+				orderToSrc.set(want, src);
+				orderToSrc.delete(have);
+				if (srcInWant && srcInWant !== src) {
+					await setOrderForSrcInPanel(panel, srcInWant, have);
+					srcToOrder.set(srcInWant, have);
+					orderToSrc.set(have, srcInWant);
+					orderToSrc.delete(TEMP_SLOT);
+				}
+			}
+		}
+
+		async function applyAll() {
+			const applyBtn = header.querySelector('[data-a="apply"]');
+			applyBtn.disabled = true; applyBtn.textContent = 'Applying…';
+			try {
+				for (let i = 0; i < sections.length; i++) {
+					await applySection(sections[i], i + 1, sections.length);
+				}
+				setStatus(`Done.\nIf the table numbers don’t refresh immediately, refresh the page to confirm.`);
+				applyBtn.textContent = 'Done';
+			} catch (err) {
+				console.error(err);
+				alert(`Apply failed: ${err.message}`);
+				applyBtn.textContent = 'Apply';
+				applyBtn.disabled = false;
+				setStatus('Apply failed — check console for details.');
+			}
+		}
+
+		header.querySelector('[data-a="apply"]').addEventListener('click', applyAll);
 	}
 
 
@@ -268,6 +526,18 @@
 					</div>
 					<div class="tp-status" data-s="passwords">OFF</div>
 				</div>
+
+				<!-- Tool 4: Image Reorder (ADDED HERE!) -->
+				<div class="tp-item" data-i="3">
+					<div class="tp-left">
+						<div class="tp-num">4</div>
+						<div>
+							<div class="tp-name">Reorder Images</div>
+							<div class="tp-desc">Visual drag-and-drop tool</div>
+						</div>
+					</div>
+					<div class="tp-status" data-s="reorder">OFF</div>
+				</div>
 			</div>
 			<div class="tp-foot">Click items to run/toggle</div>
 		</div>
@@ -280,35 +550,39 @@
 
 	const statusInspector = root.querySelector('[data-s="inspector"]');
 	const statusPasswords = root.querySelector('[data-s="passwords"]');
+	const statusReorder = root.querySelector('[data-s="reorder"]'); // Added for Tool 4
 
 	let idx = 0;
 	let drag = false; let sx = 0; let sy = 0; let startL = 0; let startT = 0;
 
 	// Update the UI labels ON/OFF based on current state
 	function refreshStatus() {
-		// Inspector Status
 		if (statusInspector) {
 			statusInspector.textContent = inspectorActive ? "ON" : "OFF";
 			statusInspector.classList.toggle("on", inspectorActive);
 		}
-		// Password Status
 		if (statusPasswords) {
 			const hasRevealed = document.querySelector('input[data-tp-revealed="true"]');
 			statusPasswords.textContent = hasRevealed ? "ON" : "OFF";
 			statusPasswords.classList.toggle("on", !!hasRevealed);
 		}
+		// Added for Tool 4
+		if (statusReorder) {
+			const isOpen = window.__thgReorderToolOpen === true;
+			statusReorder.textContent = isOpen ? "ON" : "OFF";
+			statusReorder.classList.toggle("on", isOpen);
+		}
 	}
 
 	function sync() {
-		items.forEach((el, i) => {
-			el.classList.toggle("active", i === idx);
-		});
+		items.forEach((el, i) => { el.classList.toggle("active", i === idx); });
 	}
 
 	function run(i) {
 		if (i === 0) runGodMode();
 		if (i === 1) toggleInspector();
 		if (i === 2) togglePasswords();
+		if (i === 3) runImageReorderTool(); // Added for Tool 4
 		refreshStatus();
 	}
 
@@ -349,13 +623,11 @@
 		window.removeEventListener("mousemove", onDragMove, true);
 		window.removeEventListener("mouseup", onDragEnd, true);
 		
-		// Cleanup Inspector events/DOM if active
 		document.removeEventListener('mouseover', onInspectorHover, { capture: true });
 		document.removeEventListener('click', onInspectorClick, { capture: true });
 		overlayDiv.remove();
 		tooltipDiv.remove();
 
-		// Cleanup password state (revert to dots)
 		const revealed = document.querySelectorAll('input[data-tp-revealed="true"]');
 		revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
 
