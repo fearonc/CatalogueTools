@@ -754,37 +754,37 @@ window.__toolPanelBooted__ = true;
 			</div>
 
 			<div class="tp-list">
-				<!-- Tool 1: Bulk Update TSV -->
+				<!-- Tool 1: Relationship Option Bulk Update -->
 				<div class="tp-item active" data-i="0">
 					<div class="tp-left">
 						<div class="tp-num">1</div>
 						<div>
-							<div class="tp-name">Bulk Update TSV</div>
-							<div class="tp-desc">Paste Excel TSV to update table</div>
+							<div class="tp-name">Relationship Option Bulk Update</div>
+							<div class="tp-desc">Paste from Excel to update Relationship options</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="bulk">RUN</div>
 				</div>
 
-				<!-- Tool 2: Image Reorder -->
+				<!-- Tool 2: Matrix Image Re-order -->
 				<div class="tp-item" data-i="1">
 					<div class="tp-left">
 						<div class="tp-num">2</div>
 						<div>
-							<div class="tp-name">Reorder Images</div>
+							<div class="tp-name">Matrix Image Re-order</div>
 							<div class="tp-desc">Visual drag-and-drop tool</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="reorder">OFF</div>
 				</div>
 
-				<!-- Tool 3: God Mode -->
+				<!-- Tool 3: Remove Pop-ups/Paywalls -->
 				<div class="tp-item" data-i="2">
 					<div class="tp-left">
 						<div class="tp-num">3</div>
 						<div>
-							<div class="tp-name">God Mode (Readability)</div>
-							<div class="tp-desc">Nukes sticky headers & modals</div>
+							<div class="tp-name">Remove Pop-ups/Paywalls</div>
+							<div class="tp-desc">Removes any pop-up windows like paywalls</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="godmode">RUN</div>
@@ -808,7 +808,7 @@ window.__toolPanelBooted__ = true;
 						<div class="tp-num">5</div>
 						<div>
 							<div class="tp-name">Reveal Passwords</div>
-							<div class="tp-desc">Toggle text/password inputs</div>
+							<div class="tp-desc">Show hidden passwords</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="passwords">OFF</div>
