@@ -6,7 +6,7 @@
 		return;
 	}
 	
-	window.__toolPanelBooted__ = true;
+window.__toolPanelBooted__ = true;
 
 	const PALETTE_ID = "__tool_palette__";
 	const STYLE_ID = "__tool_palette_style__";
@@ -34,12 +34,12 @@
 				wrap.style.cssText =
 					"position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
 				wrap.innerHTML = `
-					<div style="width:min(${},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
+					<div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
 						<div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:12px;">
 							<div style="font-size:16px;font-weight:700;">${esc(title)}</div>
 							<button data-x style="border:0;background:#f3f4f6;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600;">✕</button>
 						</div>
-						<div style="padding:14px 16px;overflow:auto;">${}</div>
+						<div style="padding:14px 16px;overflow:auto;">${bodyHTML}</div>
 						<div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">${footerHTML || ""}</div>
 					</div>`;
 				document.body.appendChild(wrap);
@@ -111,7 +111,7 @@
 				const target = options.find(a => norm(a.textContent) === norm(desiredText));
 				if (!target) {
 					closeAnyOpenDropdowns();
-					return { ok: false, reason: `option not found: "${}"` };
+					return { ok: false, reason: `option not found: "${desiredText}"` };
 				}
 
 				target.click();
@@ -206,7 +206,7 @@
 								<div style="font-weight:900;color:#111827;">Summary</div>
 								<div style="margin-top:6px;color:#374151;font-size:13px;line-height:1.4;white-space:pre-wrap;">${esc(summaryText)}</div>
 							</div>
-							${} ${}
+							${dupeHTML} ${missHTML}
 							<textarea data-out style="position:absolute;left:-9999px;top:-9999px;">${esc(allText)}</textarea>
 						</div>`,
 					footerHTML: `
@@ -250,10 +250,10 @@
 				for (const tr of rows) {
 					if (cancelled) break;
 					const sku = getSkuFromRow(tr);
-					if (!sku) { doneRows++; setProgress(doneRows, totalRows, `Scanning… (${}/${})`); continue; }
+					if (!sku) { doneRows++; setProgress(doneRows, totalRows, `Scanning… (${doneRows}/${totalRows})`); continue; }
 
 					const cells = map.get(sku);
-					if (!cells) { notInMap++; doneRows++; setProgress(doneRows, totalRows, `Running… (${}/${})`); continue; }
+					if (!cells) { notInMap++; doneRows++; setProgress(doneRows, totalRows, `Running… (${doneRows}/${totalRows})`); continue; }
 
 					mappedRows++;
 					const tds = [...tr.querySelectorAll(":scope > td")];
@@ -292,7 +292,7 @@
 						await sleep(4);
 					}
 					doneRows++;
-					if (doneRows % 2 === 0) setProgress(doneRows, totalRows, `Running… (${}/${})`);
+					if (doneRows % 2 === 0) setProgress(doneRows, totalRows, `Running… (${doneRows}/${totalRows})`);
 				}
 
 				setProgress(totalRows, totalRows, "Checking validation errors…");
@@ -321,8 +321,8 @@
 		const ORDER_CELL_SELECTOR = 'td.center.ng-binding';
 		const REORDER_BTN_SELECTOR = 'button.btn.btn-primary[ng-click^="reorderImage"]';
 		const MODAL_SELECTOR = '.modal-dialog';
-		const MODAL_INPUT_SELECTOR = `${} input[ng-model="value"]`;
-		const MODAL_OK_SELECTOR = `${} .modal-footer .btn-success`;
+		const MODAL_INPUT_SELECTOR = `${MODAL_SELECTOR} input[ng-model="value"]`;
+		const MODAL_OK_SELECTOR = `${MODAL_SELECTOR} .modal-footer .btn-success`;
 		const TEMP_SLOT = 999; const OPEN_TIMEOUT_MS = 7000; const CLOSE_TIMEOUT_MS = 15000; const STEP_GAP_MS = 60;
 
 		if (window.__thgReorderToolOpen) return;
@@ -339,7 +339,7 @@
 				if (el) return el;
 				await sleep(20);
 			}
-			throw new Error(`Timed out waiting for: ${}`);
+			throw new Error(`Timed out waiting for: ${sel}`);
 		}
 
 		async function waitGone(sel, timeoutMs) {
@@ -401,7 +401,7 @@
 
 		async function setOrderForSrcInPanel(panel, srcNorm, newOrder) {
 			const row = findRowInPanelBySrc(panel, srcNorm);
-			if (!row) throw new Error(`Could not find row for src in this section: ${}`);
+			if (!row) throw new Error(`Could not find row for src in this section: ${srcNorm}`);
 			const btn = row.querySelector(REORDER_BTN_SELECTOR);
 			if (!btn) throw new Error('Reorder button not found on row');
 			btn.click();
@@ -423,7 +423,7 @@
 		header.innerHTML = `
 			<div>
 				<div style="font-size:16px; font-weight:650;">Reorder images (by section)</div>
-				<div style="font-size:12px; color:#666;">Each Channel/Locale table is handled independently. Temp slot: ${}.</div>
+				<div style="font-size:12px; color:#666;">Each Channel/Locale table is handled independently. Temp slot: ${TEMP_SLOT}.</div>
 			</div>
 			<div style="display:flex; gap:8px;">
 				<button data-a="close" style="padding:8px 10px; border:1px solid #ccc; background:#fff; border-radius:8px; cursor:pointer;">Close</button>
@@ -433,7 +433,7 @@
 		body.style.cssText = `padding:12px; overflow:auto; flex:1;`;
 		const status = document.createElement('div');
 		status.style.cssText = `font-size:12px; color:#444; margin:0 0 10px 0; line-height:1.4; white-space:pre-wrap;`;
- 
+		
 		body.append(status); ui.append(header, body); overlay.append(ui); document.body.appendChild(overlay);
 
 		const setStatus = (t) => (status.textContent = t);
@@ -458,7 +458,7 @@
 			wrap.style.cssText = `border:1px solid #e6e6e6; border-radius:12px; padding:10px; margin:10px 0;`;
 			const h = document.createElement('div');
 			h.style.cssText = `font-size:13px; font-weight:650; margin:0 0 8px 0;`;
-			h.textContent = `${} (${initial.length})`;
+			h.textContent = `${title} (${initial.length})`;
 			const list = document.createElement('div');
 			list.style.cssText = `display:flex; flex-direction:column; gap:8px;`;
 			wrap.append(h, list); body.append(wrap);
@@ -536,7 +536,7 @@
 				const srcAtTemp = orderToSrc.get(TEMP_SLOT);
 				const maxOrder = Math.max(...state.map(x => x.order));
 				const bump = maxOrder + 1;
-				setStatus(`(${}/${}) ${}\nTemp slot ${} is in use. Moving that image to ${}...`);
+				setStatus(`(${sectionIndex}/${totalSections}) ${title}\nTemp slot ${TEMP_SLOT} is in use. Moving that image to ${bump}...`);
 				await setOrderForSrcInPanel(panel, srcAtTemp, bump);
 				srcToOrder.set(srcAtTemp, bump); orderToSrc.delete(TEMP_SLOT); orderToSrc.set(bump, srcAtTemp);
 			}
@@ -545,7 +545,7 @@
 				const { src, want } = desired[i];
 				const have = srcToOrder.get(src);
 				if (have === want) continue;
-				setStatus(`(${}/${}) ${}\nStep ${i + 1}/${desired.length}: place into ${} (currently ${})...`);
+				setStatus(`(${sectionIndex}/${totalSections}) ${title}\nStep ${i + 1}/${desired.length}: place into ${want} (currently ${have})...`);
 				const srcInWant = orderToSrc.get(want);
 				if (srcInWant && srcInWant !== src) {
 					await setOrderForSrcInPanel(panel, srcInWant, TEMP_SLOT);
@@ -577,9 +577,28 @@
 		header.querySelector('[data-a="apply"]').addEventListener('click', applyAll);
 	}
 
+	// ==========================================
+	// TOOL 3: GOD MODE (Nuke Sticky/Fixed Elements)
+	// ==========================================
+	function runGodMode() {
+		document.querySelectorAll('*').forEach(el => {
+			if (el.id === PALETTE_ID || el.closest(`#${PALETTE_ID}`)) return;
+			const p = window.getComputedStyle(el).position;
+			if (p === 'fixed' || p === 'sticky') el.remove();
+		});
+		document.body.style.setProperty('overflow', 'auto', 'important');
+		document.documentElement.style.setProperty('overflow', 'auto', 'important');
+		
+		const btn = document.querySelector('[data-s="godmode"]');
+		if(btn) {
+			const original = btn.textContent;
+			btn.textContent = "DONE!";
+			setTimeout(() => btn.textContent = original, 1000);
+		}
+	}
 
 	// ==========================================
-	// TOOL 3: ELEMENT PATH INSPECTOR
+	// TOOL 4: ELEMENT PATH INSPECTOR
 	// ==========================================
 	let inspectorActive = false;
 	const overlayDiv = document.createElement('div');
@@ -609,7 +628,7 @@
 			} else {
 				let sib = el, nth = 1;
 				while (sib = sib.previousElementSibling) { if (sib.nodeName.toLowerCase() == selector) nth++; }
-				if (nth != 1) selector += `:nth-of-type(${})`;
+				if (nth != 1) selector += `:nth-of-type(${nth})`;
 			}
 			path.unshift(selector);
 			el = el.parentNode;
@@ -618,7 +637,7 @@
 	}
 
 	function onInspectorHover(e) {
-		if (e.target.closest(`#${}`)) {
+		if (e.target.closest(`#${PALETTE_ID}`)) {
 			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none'; return;
 		}
 		const rect = e.target.getBoundingClientRect();
@@ -634,7 +653,7 @@
 	}
 
 	function onInspectorClick(e) {
-		if (e.target.closest(`#${}`)) return;
+		if (e.target.closest(`#${PALETTE_ID}`)) return;
 		e.preventDefault(); e.stopPropagation();
 		navigator.clipboard.writeText(getCssPath(e.target)).catch(() => {});
 		tooltipDiv.textContent = "Copied to clipboard!";
@@ -657,6 +676,18 @@
 		}
 	}
 
+	// ==========================================
+	// TOOL 5: PASSWORD REVEALER
+	// ==========================================
+	function togglePasswords() {
+		const inputs = Array.from(document.querySelectorAll('input'));
+		const revealed = inputs.filter(i => i.dataset.tpRevealed === 'true');
+		if (revealed.length > 0) {
+			revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
+		} else {
+			inputs.filter(i => i.type === 'password').forEach(i => { i.type = 'text'; i.dataset.tpRevealed = 'true'; });
+		}
+	}
 
 	// ==========================================
 	// UI GENERATION & LOGIC
@@ -664,47 +695,47 @@
 	const style = document.createElement("style");
 	style.id = STYLE_ID;
 	style.textContent = `
-		#${} {
+		#${PALETTE_ID} {
 			position: fixed; right: 14px; bottom: 14px; width: 320px; z-index: 2147483647;
 			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 		}
-		#${} * { box-sizing: border-box; }
-		#${} .tp-box {
+		#${PALETTE_ID} * { box-sizing: border-box; }
+		#${PALETTE_ID} .tp-box {
 			width: 100%; background: rgba(15,17,23,.96); color: #e8ecf3;
 			border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
 			box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow: hidden; backdrop-filter: blur(8px);
 		}
-		#${} .tp-head {
+		#${PALETTE_ID} .tp-head {
 			display: flex; justify-content: space-between; align-items: flex-start;
 			padding: 12px 12px 10px; border-bottom: 1px solid rgba(255,255,255,.08);
 			font-size: 12px; letter-spacing: .03em; color: #aab4c3; cursor: move; user-select: none;
 		}
-		#${} .tp-title { font-size: 14px; color: #fff; margin-bottom: 3px; }
-		#${} .tp-close {
+		#${PALETTE_ID} .tp-title { font-size: 14px; color: #fff; margin-bottom: 3px; }
+		#${PALETTE_ID} .tp-close {
 			border: 0; background: rgba(255,255,255,.06); color: #cfd7e3;
 			width: 24px; height: 24px; border-radius: 7px; cursor: pointer; font: 16px/1 monospace;
 		}
-		#${} .tp-close:hover { background: rgba(255,255,255,.12); color: #fff; }
-		#${} .tp-list { padding: 8px; }
-		#${} .tp-item {
+		#${PALETTE_ID} .tp-close:hover { background: rgba(255,255,255,.12); color: #fff; }
+		#${PALETTE_ID} .tp-list { padding: 8px; }
+		#${PALETTE_ID} .tp-item {
 			display: flex; justify-content: space-between; align-items: center;
 			padding: 10px 12px; border-radius: 10px; cursor: pointer; color: #dce3ee; margin-bottom: 4px;
 		}
-		#${} .tp-item:last-child { margin-bottom: 0; }
-		#${} .tp-item:hover, #${} .tp-item.active { background: rgba(255,255,255,.06); }
-		#${} .tp-left { display: flex; gap: 10px; align-items: center; }
-		#${} .tp-num {
+		#${PALETTE_ID} .tp-item:last-child { margin-bottom: 0; }
+		#${PALETTE_ID} .tp-item:hover, #${PALETTE_ID} .tp-item.active { background: rgba(255,255,255,.06); }
+		#${PALETTE_ID} .tp-left { display: flex; gap: 10px; align-items: center; }
+		#${PALETTE_ID} .tp-num {
 			width: 20px; height: 20px; border-radius: 6px; background: rgba(255,255,255,.08);
 			display: grid; place-items: center; font-size: 11px; color: #fff;
 		}
-		#${} .tp-name { font-size: 13px; }
-		#${} .tp-desc { font-size: 11px; color: #94a0b3; }
-		#${} .tp-status {
+		#${PALETTE_ID} .tp-name { font-size: 13px; }
+		#${PALETTE_ID} .tp-desc { font-size: 11px; color: #94a0b3; }
+		#${PALETTE_ID} .tp-status {
 			font-size: 10px; padding: 3px 6px; border-radius: 999px;
 			background: rgba(255,255,255,.08); color: #cfd7e3;
 		}
-		#${} .tp-status.on { background: rgba(80,200,120,.18); color: #9ff0b3; }
-		#${} .tp-foot {
+		#${PALETTE_ID} .tp-status.on { background: rgba(80,200,120,.18); color: #9ff0b3; }
+		#${PALETTE_ID} .tp-foot {
 			padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 11px; color: #8e99aa;
 		}
 	`;
@@ -747,10 +778,22 @@
 					<div class="tp-status" data-s="reorder">OFF</div>
 				</div>
 
-				<!-- Tool 3: Inspector -->
+				<!-- Tool 3: Remove Pop-ups/Paywalls -->
 				<div class="tp-item" data-i="2">
 					<div class="tp-left">
 						<div class="tp-num">3</div>
+						<div>
+							<div class="tp-name">Remove Pop-ups/Paywalls</div>
+							<div class="tp-desc">Removes any pop-up windows like paywalls</div>
+						</div>
+					</div>
+					<div class="tp-status" data-s="godmode">RUN</div>
+				</div>
+
+				<!-- Tool 4: Inspector -->
+				<div class="tp-item" data-i="3">
+					<div class="tp-left">
+						<div class="tp-num">4</div>
 						<div>
 							<div class="tp-name">Element Inspector</div>
 							<div class="tp-desc">Hover to get CSS path & copy</div>
@@ -758,10 +801,22 @@
 					</div>
 					<div class="tp-status" data-s="inspector">OFF</div>
 				</div>
+
+				<!-- Tool 5: Password Revealer -->
+				<div class="tp-item" data-i="4">
+					<div class="tp-left">
+						<div class="tp-num">5</div>
+						<div>
+							<div class="tp-name">Reveal Passwords</div>
+							<div class="tp-desc">Show hidden passwords</div>
+						</div>
+					</div>
+					<div class="tp-status" data-s="passwords">OFF</div>
+				</div>
 			</div>
 			<div class="tp-foot">Click items to run/toggle</div>
 		</div>
-	;
+	`;
 	document.body.appendChild(root);
 
 	const items = [...root.querySelectorAll(".tp-item")];
@@ -770,6 +825,7 @@
 
 	const statusReorder = root.querySelector('[data-s="reorder"]');
 	const statusInspector = root.querySelector('[data-s="inspector"]');
+	const statusPasswords = root.querySelector('[data-s="passwords"]');
 
 	let idx = 0; let drag = false; let sx = 0; let sy = 0; let startL = 0; let startT = 0;
 
@@ -784,6 +840,11 @@
 			statusInspector.textContent = inspectorActive ? "ON" : "OFF";
 			statusInspector.classList.toggle("on", inspectorActive);
 		}
+		if (statusPasswords) {
+			const hasRevealed = document.querySelector('input[data-tp-revealed="true"]');
+			statusPasswords.textContent = hasRevealed ? "ON" : "OFF";
+			statusPasswords.classList.toggle("on", !!hasRevealed);
+		}
 	}
 
 	function sync() { items.forEach((el, i) => { el.classList.toggle("active", i === idx); }); }
@@ -791,7 +852,9 @@
 	function run(i) {
 		if (i === 0) runBulkUpdateTool();
 		if (i === 1) runImageReorderTool();
-		if (i === 2) toggleInspector();
+		if (i === 2) runGodMode();
+		if (i === 3) toggleInspector();
+		if (i === 4) togglePasswords();
 		refreshStatus();
 	}
 
@@ -827,10 +890,13 @@
 		window.removeEventListener("keydown", onKey, true);
 		window.removeEventListener("mousemove", onDragMove, true);
 		window.removeEventListener("mouseup", onDragEnd, true);
- 
+		
 		document.removeEventListener('mouseover', onInspectorHover, { capture: true });
 		document.removeEventListener('click', onInspectorClick, { capture: true });
 		overlayDiv.remove(); tooltipDiv.remove();
+
+		const revealed = document.querySelectorAll('input[data-tp-revealed="true"]');
+		revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
 
 		root.remove(); style.remove();
 		delete window.__toolPaletteCleanup__; delete window.__toolPanelBooted__;
