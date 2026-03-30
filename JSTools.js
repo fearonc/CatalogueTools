@@ -577,25 +577,124 @@ window.__toolPanelBooted__ = true;
 		header.querySelector('[data-a="apply"]').addEventListener('click', applyAll);
 	}
 
-	// ==========================================
-	// TOOL 3: GOD MODE (Nuke Sticky/Fixed Elements)
-	// ==========================================
-	function runGodMode() {
-		document.querySelectorAll('*').forEach(el => {
-			if (el.id === PALETTE_ID || el.closest(`#${PALETTE_ID}`)) return;
-			const p = window.getComputedStyle(el).position;
-			if (p === 'fixed' || p === 'sticky') el.remove();
-		});
-		document.body.style.setProperty('overflow', 'auto', 'important');
-		document.documentElement.style.setProperty('overflow', 'auto', 'important');
-		
-		const btn = document.querySelector('[data-s="godmode"]');
-		if(btn) {
-			const original = btn.textContent;
-			btn.textContent = "DONE!";
-			setTimeout(() => btn.textContent = original, 1000);
+// ==========================================
+// TOOL 3: WRAP EXCEL COLUMN IN QUOTES
+// ==========================================
+function runQuoteWrapTool() {
+	const esc = s =>
+		(s || "").replace(/[&<>"']/g, m => ({
+			"&": "&amp;",
+			"<": "&lt;",
+			">": "&gt;",
+			'"': "&quot;",
+			"'": "&#39;"
+		}[m]));
+
+	const makeModal = ({ title, bodyHTML, footerHTML, width = "900px" }) => {
+		const wrap = document.createElement("div");
+		wrap.style.cssText =
+			"position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
+		wrap.innerHTML = `
+			<div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
+				<div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+					<div style="font-size:16px;font-weight:700;">${esc(title)}</div>
+					<button data-x style="border:0;background:#f3f4f6;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600;">✕</button>
+				</div>
+				<div style="padding:14px 16px;overflow:auto;">${bodyHTML}</div>
+				<div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">${footerHTML || ""}</div>
+			</div>`;
+		document.body.appendChild(wrap);
+
+		const close = () => wrap.remove();
+		wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
+		wrap.querySelector("[data-x]").addEventListener("click", close);
+
+		return {
+			wrap,
+			close,
+			qs: sel => wrap.querySelector(sel)
+		};
+	};
+
+	const convertText = raw => {
+		const lines = (raw || "")
+			.split(/\r?\n/)
+			.map(x => x.trim())
+			.filter(Boolean);
+
+		return lines.map((line, i) => {
+			const safe = line.replace(/'/g, "\\'");
+			return `'${safe}'${i === lines.length - 1 ? "" : ","}`;
+		}).join("\n");
+	};
+
+	const modal = makeModal({
+		title: "Wrap Excel column in quotes",
+		width: "900px",
+		bodyHTML: `
+			<div style="display:flex;flex-direction:column;gap:12px;">
+				<div style="color:#374151;font-size:13px;line-height:1.4;">
+					Paste one column from Excel below. Each non-blank row will be converted to
+					<code style="padding:2px 6px;border:1px solid #eee;border-radius:8px;background:#fafafa;">'Value',</code>
+					with no comma on the last row.
+				</div>
+
+				<textarea data-input placeholder="Paste here..."
+					style="color:#111;background:#fff;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
+
+				<div data-err style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px;font-size:13px;"></div>
+
+				<div style="font-size:13px;font-weight:700;color:#111827;">Output</div>
+
+				<textarea data-output readonly
+					style="color:#111;background:#f9fafb;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
+			</div>`,
+		footerHTML: `
+			<button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;">Close</button>
+			<button data-run style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Convert + Copy</button>`
+	});
+
+	const input = modal.qs("[data-input]");
+	const output = modal.qs("[data-output]");
+	const err = modal.qs("[data-err]");
+
+	const refresh = () => {
+		err.style.display = "none";
+		output.value = convertText(input.value);
+	};
+
+	input.addEventListener("input", refresh);
+	modal.qs("[data-close]").addEventListener("click", modal.close);
+
+	modal.qs("[data-run]").addEventListener("click", async () => {
+		const out = convertText(input.value);
+
+		if (!out.trim()) {
+			err.textContent = "Paste something first.";
+			err.style.display = "block";
+			return;
 		}
-	}
+
+		output.value = out;
+
+		try {
+			await navigator.clipboard.writeText(out);
+		} catch {
+			output.focus();
+			output.select();
+			document.execCommand("copy");
+		}
+
+		const btn = modal.qs("[data-run]");
+		btn.textContent = "Copied!";
+		setTimeout(() => {
+			const b = modal.qs("[data-run]");
+			if (b) b.textContent = "Convert + Copy";
+		}, 1200);
+	});
+
+	refresh();
+}
 
 	// ==========================================
 	// TOOL 4: ELEMENT PATH INSPECTOR
@@ -778,17 +877,17 @@ window.__toolPanelBooted__ = true;
 					<div class="tp-status" data-s="reorder">OFF</div>
 				</div>
 
-				<!-- Tool 3: Remove Pop-ups/Paywalls -->
-				<div class="tp-item" data-i="2">
-					<div class="tp-left">
-						<div class="tp-num">3</div>
-						<div>
-							<div class="tp-name">Remove Pop-ups/Paywalls</div>
-							<div class="tp-desc">Removes any pop-up windows like paywalls</div>
-						</div>
-					</div>
-					<div class="tp-status" data-s="godmode">RUN</div>
-				</div>
+<!-- Tool 3: Wrap Excel Column -->
+<div class="tp-item" data-i="2">
+	<div class="tp-left">
+		<div class="tp-num">3</div>
+		<div>
+			<div class="tp-name">Wrap Excel Column</div>
+			<div class="tp-desc">Paste 1 column and copy quoted rows</div>
+		</div>
+	</div>
+	<div class="tp-status" data-s="quotewrap">RUN</div>
+</div>
 
 				<!-- Tool 4: Inspector -->
 				<div class="tp-item" data-i="3">
@@ -850,13 +949,13 @@ window.__toolPanelBooted__ = true;
 	function sync() { items.forEach((el, i) => { el.classList.toggle("active", i === idx); }); }
 
 	function run(i) {
-		if (i === 0) runBulkUpdateTool();
-		if (i === 1) runImageReorderTool();
-		if (i === 2) runGodMode();
-		if (i === 3) toggleInspector();
-		if (i === 4) togglePasswords();
-		refreshStatus();
-	}
+	if (i === 0) runBulkUpdateTool();
+	if (i === 1) runImageReorderTool();
+	if (i === 2) runQuoteWrapTool();
+	if (i === 3) toggleInspector();
+	if (i === 4) togglePasswords();
+	refreshStatus();
+}
 
 	function onKey(e) { if (e.key === "Escape") cleanup(); }
 
