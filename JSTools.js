@@ -617,16 +617,16 @@ function runQuoteWrapTool() {
 	};
 
 	const convertText = raw => {
-		const lines = (raw || "")
-			.split(/\r?\n/)
-			.map(x => x.trim())
-			.filter(Boolean);
+	const lines = (raw || "")
+		.split(/\r?\n/)
+		.map(x => (x || "").replace(/\s+/g, " ").trim())
+		.filter(Boolean);
 
-		return lines.map((line, i) => {
-			const safe = line.replace(/'/g, "\\'");
-			return `'${safe}'${i === lines.length - 1 ? "" : ","}`;
-		}).join("\n");
-	};
+	return lines.map((line, i) => {
+		const safe = line.replace(/'/g, "''");
+		return `'${safe}'${i === lines.length - 1 ? "" : ","}`;
+	}).join("\n");
+};
 
 	const modal = makeModal({
 		title: "Wrap Excel column in quotes",
