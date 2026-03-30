@@ -1186,7 +1186,7 @@
 		<div class="tp-box">
 			<div class="tp-head">
 				<div>
-					<div class="tp-title">JS Tool Kit</div>
+					<div class="tp-title">Catalogue & SC Tool Kit</div>
 					<div>NOTE: This toolkit will not work on our sites due to strict privacy policies</div>
 					<div>Draggable • Esc to close</div>
 				</div>
