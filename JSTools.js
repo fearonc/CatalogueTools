@@ -1186,7 +1186,8 @@
 		<div class="tp-box">
 			<div class="tp-head">
 				<div>
-					<div class="tp-title">JS Utility Belt</div>
+					<div class="tp-title">JS Tool Kit</div>
+					<div>NOTE: This toolkit will not work on our sites due to strict privacy policies</div>
 					<div>Draggable • Esc to close</div>
 				</div>
 				<button class="tp-close" title="Close">×</button>
