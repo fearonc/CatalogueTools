@@ -5,8 +5,8 @@
 		delete window.__toolPanelBooted__;
 		return;
 	}
-	
-window.__toolPanelBooted__ = true;
+
+	window.__toolPanelBooted__ = true;
 
 	const PALETTE_ID = "__tool_palette__";
 	const STYLE_ID = "__tool_palette_style__";
@@ -123,7 +123,7 @@ window.__toolPanelBooted__ = true;
 
 			const expectedCols = ["SKU"];
 			for (const c of colSpecs) {
-				if (c.excelCols === 2) { expectedCols.push(`${c.name} (value)`, `${c.name} (unit)`); } 
+				if (c.excelCols === 2) { expectedCols.push(`${c.name} (value)`, `${c.name} (unit)`); }
 				else { expectedCols.push(c.name); }
 			}
 
@@ -216,7 +216,7 @@ window.__toolPanelBooted__ = true;
 
 				m.qs("[data-close]").addEventListener("click", m.close);
 				m.qs("[data-copy]").addEventListener("click", async () => {
-					try { await navigator.clipboard.writeText(allText); } 
+					try { await navigator.clipboard.writeText(allText); }
 					catch { const t = m.qs("[data-out]"); t.value = allText; t.select(); document.execCommand("copy"); }
 					m.qs("[data-copy]").textContent = "Copied!";
 					setTimeout(() => { const b = m.qs("[data-copy]"); if (b) b.textContent = "Copy report"; }, 1200);
@@ -280,13 +280,13 @@ window.__toolPanelBooted__ = true;
 							if (!desired) { skipped++; continue; }
 							const input = cell.querySelector("input[type='text'], input:not([type])");
 							const hasDropdown = !!cell.querySelector("button.dropdown-toggle[data-uib-dropdown-toggle], .dropdown-toggle");
-							if (input && !hasDropdown) { setInputValue(input, desired); changed++; } 
+							if (input && !hasDropdown) { setInputValue(input, desired); changed++; }
 							else if (hasDropdown) {
 								const r = await setDropdownInCell(cell, desired);
 								if (!r.ok) missingDropdowns.push({ sku, field: spec.name, desired });
 								else if (!r.skipped) changed++; else skipped++;
-							} 
-							else if (input) { setInputValue(input, desired); changed++; } 
+							}
+							else if (input) { setInputValue(input, desired); changed++; }
 							else skipped++;
 						}
 						await sleep(4);
@@ -433,7 +433,7 @@ window.__toolPanelBooted__ = true;
 		body.style.cssText = `padding:12px; overflow:auto; flex:1;`;
 		const status = document.createElement('div');
 		status.style.cssText = `font-size:12px; color:#444; margin:0 0 10px 0; line-height:1.4; white-space:pre-wrap;`;
-		
+
 		body.append(status); ui.append(header, body); overlay.append(ui); document.body.appendChild(overlay);
 
 		const setStatus = (t) => (status.textContent = t);
@@ -577,132 +577,485 @@ window.__toolPanelBooted__ = true;
 		header.querySelector('[data-a="apply"]').addEventListener('click', applyAll);
 	}
 
-// ==========================================
-// TOOL 3: WRAP EXCEL COLUMN IN QUOTES
-// ==========================================
-function runQuoteWrapTool() {
-	const esc = s =>
-		(s || "").replace(/[&<>"']/g, m => ({
-			"&": "&amp;",
-			"<": "&lt;",
-			">": "&gt;",
-			'"': "&quot;",
-			"'": "&#39;"
-		}[m]));
+	// ==========================================
+	// TOOL 3: AUDIT HISTORY SEARCH (VERSION 1)
+	// ==========================================
+	function runAuditHistorySearchTool() {
+		(async () => {
+			const sleep = ms => new Promise(r => setTimeout(r, ms));
+			const norm = s => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
 
-	const makeModal = ({ title, bodyHTML, footerHTML, width = "900px" }) => {
-		const wrap = document.createElement("div");
-		wrap.style.cssText =
-			"position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
-		wrap.innerHTML = `
-			<div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
-				<div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-					<div style="font-size:16px;font-weight:700;">${esc(title)}</div>
-					<button data-x style="border:0;background:#f3f4f6;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600;">✕</button>
+			const term = prompt("Search audit history for term:");
+			if (!term || !term.trim()) return;
+
+			const needle = term.trim().toLowerCase();
+
+			const START_ROW_SELECTOR = 'tr[data-ng-repeat-start="history in history"]';
+			const TOGGLE_SELECTOR = '[data-ng-click="toggleExpandHistory(history)"]';
+			const TABLE_SELECTOR = 'table.table';
+			const PANEL_ID = "__audit_search_panel__";
+
+			document.getElementById(PANEL_ID)?.remove();
+			window.__auditSearchObserver__?.disconnect?.();
+			delete window.__auditSearchObserver__;
+
+			const startRows = [...document.querySelectorAll(START_ROW_SELECTOR)];
+			if (!startRows.length) {
+				alert("No audit history rows found.");
+				return;
+			}
+
+			const table = document.querySelector(TABLE_SELECTOR) || startRows[0]?.closest("table");
+			if (!table) {
+				alert("Could not find the audit history table.");
+				return;
+			}
+
+			const clearRowStyles = () => {
+				document.querySelectorAll("[data-audit-match='1'], [data-audit-dim='1'], [data-audit-active='1']").forEach(el => {
+					el.style.outline = "";
+					el.style.background = "";
+					el.style.opacity = "";
+					el.style.boxShadow = "";
+					delete el.dataset.auditMatch;
+					delete el.dataset.auditDim;
+					delete el.dataset.auditActive;
+				});
+			};
+
+			const clearMarks = root => {
+				if (!root) return;
+				root.querySelectorAll("mark[data-audit-hit='1']").forEach(mark => {
+					mark.replaceWith(document.createTextNode(mark.textContent));
+				});
+				root.normalize();
+			};
+
+			const getDetailRow = row => {
+				const next = row?.nextElementSibling;
+				if (!next) return null;
+				if (next.matches(START_ROW_SELECTOR)) return null;
+				return next.tagName === "TR" ? next : null;
+			};
+
+			const isExpanded = row => {
+				const icon = row.querySelector(".glyphicon");
+				return !!icon?.classList.contains("glyphicon-chevron-down");
+			};
+
+			const expandRow = async row => {
+				if (!row) return null;
+				const toggle = row.querySelector(TOGGLE_SELECTOR);
+				if (!toggle) return null;
+
+				let detailRow = getDetailRow(row);
+				if (detailRow) return detailRow;
+
+				if (!isExpanded(row)) {
+					toggle.click();
+					await sleep(50);
+				}
+
+				const start = performance.now();
+				while ((performance.now() - start) < 1400) {
+					detailRow = getDetailRow(row);
+					if (detailRow) return detailRow;
+					await sleep(30);
+				}
+
+				return getDetailRow(row);
+			};
+
+			const highlightTermInElement = (root, searchTerm) => {
+				if (!root || !searchTerm) return [];
+
+				clearMarks(root);
+
+				const walker = document.createTreeWalker(
+					root,
+					NodeFilter.SHOW_TEXT,
+					{
+						acceptNode(node) {
+							if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+							const parent = node.parentElement;
+							if (!parent) return NodeFilter.FILTER_REJECT;
+							if (parent.closest("mark[data-audit-hit='1']")) return NodeFilter.FILTER_REJECT;
+							if (["SCRIPT", "STYLE", "NOSCRIPT"].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+							return NodeFilter.FILTER_ACCEPT;
+						}
+					}
+				);
+
+				const textNodes = [];
+				let node;
+				while ((node = walker.nextNode())) textNodes.push(node);
+
+				const marks = [];
+
+				for (const textNode of textNodes) {
+					const text = textNode.nodeValue;
+					const lower = text.toLowerCase();
+					if (!lower.includes(searchTerm)) continue;
+
+					const frag = document.createDocumentFragment();
+					let lastIndex = 0;
+					let idx = 0;
+
+					while ((idx = lower.indexOf(searchTerm, lastIndex)) !== -1) {
+						if (idx > lastIndex) {
+							frag.appendChild(document.createTextNode(text.slice(lastIndex, idx)));
+						}
+
+						const mark = document.createElement("mark");
+						mark.setAttribute("data-audit-hit", "1");
+						mark.style.background = "#fde68a";
+						mark.style.color = "#111";
+						mark.style.padding = "0 2px";
+						mark.style.borderRadius = "3px";
+						mark.style.boxShadow = "inset 0 0 0 1px rgba(0,0,0,.08)";
+						mark.textContent = text.slice(idx, idx + searchTerm.length);
+						frag.appendChild(mark);
+						marks.push(mark);
+
+						lastIndex = idx + searchTerm.length;
+					}
+
+					if (lastIndex < text.length) {
+						frag.appendChild(document.createTextNode(text.slice(lastIndex)));
+					}
+
+					textNode.parentNode.replaceChild(frag, textNode);
+				}
+
+				return marks;
+			};
+
+			clearRowStyles();
+
+			const results = [];
+
+			for (let i = 0; i < startRows.length; i++) {
+				const row = startRows[i];
+				const detailRow = await expandRow(row);
+
+				const headerText = norm(row.innerText || row.textContent || "");
+				const detailText = norm(detailRow?.innerText || detailRow?.textContent || "");
+				const matched = headerText.includes(needle) || detailText.includes(needle);
+
+				if (matched) {
+					row.dataset.auditMatch = "1";
+					row.style.outline = "2px solid #16a34a";
+					row.style.background = "#f0fdf4";
+					row.style.opacity = "1";
+
+					if (detailRow) {
+						detailRow.dataset.auditMatch = "1";
+						detailRow.style.outline = "2px solid #16a34a";
+						detailRow.style.background = "#f0fdf4";
+						detailRow.style.opacity = "1";
+					}
+
+					const cells = row.querySelectorAll("td");
+					results.push({
+						index: i,
+						row,
+						date: cells[1]?.innerText?.trim() || "",
+						type: cells[2]?.innerText?.trim() || "",
+						user: cells[3]?.innerText?.trim() || ""
+					});
+				} else {
+					row.dataset.auditDim = "1";
+					row.style.opacity = "0.28";
+					if (detailRow) {
+						detailRow.dataset.auditDim = "1";
+						detailRow.style.opacity = "0.28";
+					}
+				}
+			}
+
+			if (!results.length) {
+				alert(`No matches found for "${term}".`);
+				return;
+			}
+
+			let activeIndex = 0;
+
+			const matchedRows = new Set(results.map(r => r.row));
+
+			const applyHighlightToOpenMatchedRow = () => {
+				const openRow = [...document.querySelectorAll(START_ROW_SELECTOR)].find(isExpanded);
+				if (!openRow) return;
+
+				const detailRow = getDetailRow(openRow);
+				if (!detailRow) return;
+
+				clearMarks(detailRow);
+
+				if (matchedRows.has(openRow)) {
+					const marks = highlightTermInElement(detailRow, needle);
+					if (marks.length) {
+						marks[0].style.background = "#f59e0b";
+						marks[0].style.outline = "2px solid #b45309";
+					}
+				}
+			};
+
+			const panel = document.createElement("div");
+			panel.id = PANEL_ID;
+			panel.style.cssText = [
+				"position:fixed",
+				"right:16px",
+				"bottom:16px",
+				"z-index:2147483647",
+				"background:#111827",
+				"color:#fff",
+				"border-radius:12px",
+				"box-shadow:0 10px 30px rgba(0,0,0,.35)",
+				"padding:12px",
+				"min-width:280px",
+				"font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif"
+			].join(";");
+
+			panel.innerHTML = `
+				<div style="font-size:13px;font-weight:700;margin-bottom:8px;">Audit search</div>
+				<div data-summary style="font-size:12px;color:#d1d5db;line-height:1.4;margin-bottom:10px;"></div>
+				<div style="display:flex;gap:8px;flex-wrap:wrap;">
+					<button data-prev style="border:0;background:#374151;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700;">Previous</button>
+					<button data-next style="border:0;background:#2563eb;color:#fff;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700;">Next</button>
+					<button data-clear style="border:0;background:#f3f4f6;color:#111827;border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:700;">Clear</button>
 				</div>
-				<div style="padding:14px 16px;overflow:auto;">${bodyHTML}</div>
-				<div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">${footerHTML || ""}</div>
-			</div>`;
-		document.body.appendChild(wrap);
+			`;
+			document.body.appendChild(panel);
 
-		const close = () => wrap.remove();
-		wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
-		wrap.querySelector("[data-x]").addEventListener("click", close);
+			const updatePanel = () => {
+				panel.querySelector("[data-summary]").innerHTML = `
+					<div><b>Term:</b> ${term}</div>
+					<div><b>Matching rows:</b> ${results.length}</div>
+					<div><b>Current:</b> ${activeIndex + 1}/${results.length}</div>
+					<div style="margin-top:4px;color:#93c5fd;">${results[activeIndex]?.date || ""} · ${results[activeIndex]?.type || ""} · ${results[activeIndex]?.user || ""}</div>
+				`;
+			};
 
-		return {
-			wrap,
-			close,
-			qs: sel => wrap.querySelector(sel)
-		};
-	};
+			const focusResult = async idx => {
+				if (idx < 0 || idx >= results.length) return;
+				activeIndex = idx;
 
-	const convertText = raw => {
-	const lines = (raw || "")
-		.split(/\r?\n/)
-		.map(x => (x || "").replace(/\s+/g, " ").trim())
-		.filter(Boolean);
+				document.querySelectorAll("[data-audit-active='1']").forEach(el => {
+					el.style.boxShadow = "";
+					delete el.dataset.auditActive;
+				});
 
-	return lines.map((line, i) => {
-		const safe = line.replace(/'/g, "''");
-		return `'${safe}'${i === lines.length - 1 ? "" : ","}`;
-	}).join("\n");
-};
+				const result = results[activeIndex];
+				const row = result.row;
+				const detailRow = await expandRow(row);
 
-	const modal = makeModal({
-		title: "Wrap Excel column in quotes",
-		width: "900px",
-		bodyHTML: `
-			<div style="display:flex;flex-direction:column;gap:12px;">
-				<div style="color:#374151;font-size:13px;line-height:1.4;">
-					Paste one column from Excel below. Each non-blank row will be converted to
-					<code style="padding:2px 6px;border:1px solid #eee;border-radius:8px;background:#fafafa;">'Value',</code>
-					with no comma on the last row.
-				</div>
+				row.dataset.auditActive = "1";
+				row.style.boxShadow = "inset 0 0 0 2px #f59e0b";
 
-				<textarea data-input placeholder="Paste here..."
-					style="color:#111;background:#fff;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
+				if (detailRow) {
+					detailRow.dataset.auditActive = "1";
+					detailRow.style.boxShadow = "inset 0 0 0 2px #f59e0b";
 
-				<div data-err style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px;font-size:13px;"></div>
+					const marks = highlightTermInElement(detailRow, needle);
 
-				<div style="font-size:13px;font-weight:700;color:#111827;">Output</div>
+					if (marks.length) {
+						marks[0].style.background = "#f59e0b";
+						marks[0].style.outline = "2px solid #b45309";
+						marks[0].scrollIntoView({ behavior: "smooth", block: "center" });
+					} else {
+						row.scrollIntoView({ behavior: "smooth", block: "center" });
+					}
+				} else {
+					row.scrollIntoView({ behavior: "smooth", block: "center" });
+				}
 
-				<textarea data-output readonly
-					style="color:#111;background:#f9fafb;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
-			</div>`,
-		footerHTML: `
-			<button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;">Close</button>
-			<button data-run style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Convert + Copy</button>`
-	});
+				updatePanel();
+			};
 
-	const input = modal.qs("[data-input]");
-	const output = modal.qs("[data-output]");
-	const err = modal.qs("[data-err]");
+			const clearAll = () => {
+				document.getElementById(PANEL_ID)?.remove();
+				window.__auditSearchObserver__?.disconnect?.();
+				delete window.__auditSearchObserver__;
+				clearRowStyles();
 
-	const refresh = () => {
-		err.style.display = "none";
-		output.value = convertText(input.value);
-	};
+				document.querySelectorAll("tr").forEach(tr => clearMarks(tr));
+			};
 
-	input.addEventListener("input", refresh);
-	modal.qs("[data-close]").addEventListener("click", modal.close);
+			panel.querySelector("[data-prev]").addEventListener("click", () => {
+				focusResult((activeIndex - 1 + results.length) % results.length);
+			});
 
-	modal.qs("[data-run]").addEventListener("click", async () => {
-		const out = convertText(input.value);
+			panel.querySelector("[data-next]").addEventListener("click", () => {
+				focusResult((activeIndex + 1) % results.length);
+			});
 
-		if (!out.trim()) {
-			err.textContent = "Paste something first.";
-			err.style.display = "block";
-			return;
-		}
+			panel.querySelector("[data-clear]").addEventListener("click", clearAll);
 
-		output.value = out;
+			updatePanel();
+			await focusResult(0);
 
-		try {
-			await navigator.clipboard.writeText(out);
-		} catch {
-			output.focus();
-			output.select();
-			document.execCommand("copy");
-		}
+			let reapplyTimer = null;
+			const observer = new MutationObserver(() => {
+				clearTimeout(reapplyTimer);
+				reapplyTimer = setTimeout(() => {
+					applyHighlightToOpenMatchedRow();
+				}, 150);
+			});
 
-		const btn = modal.qs("[data-run]");
-		btn.textContent = "Copied!";
-		setTimeout(() => {
-			const b = modal.qs("[data-run]");
-			if (b) b.textContent = "Convert + Copy";
-		}, 1200);
-	});
+			observer.observe(table.tBodies[0] || table, {
+				childList: true,
+				subtree: true,
+				attributes: true,
+				attributeFilter: ["class"]
+			});
 
-	refresh();
-}
+			window.__auditSearchObserver__ = observer;
+
+			table.addEventListener("click", () => {
+				clearTimeout(reapplyTimer);
+				reapplyTimer = setTimeout(() => {
+					applyHighlightToOpenMatchedRow();
+				}, 250);
+			}, true);
+
+			console.clear();
+			console.log(`Search term: "${term}"`);
+			console.log(`Matching rows: ${results.length}`);
+			console.table(results.map((r, i) => ({
+				"#": i + 1,
+				"Date Uploaded": r.date,
+				"Upload Type": r.type,
+				"Username": r.user
+			})));
+		})();
+	}
 
 	// ==========================================
-	// TOOL 4: ELEMENT PATH INSPECTOR
+	// TOOL 4: WRAP EXCEL COLUMN IN QUOTES
+	// ==========================================
+	function runQuoteWrapTool() {
+		const esc = s =>
+			(s || "").replace(/[&<>"']/g, m => ({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;"
+			}[m]));
+
+		const makeModal = ({ title, bodyHTML, footerHTML, width = "900px" }) => {
+			const wrap = document.createElement("div");
+			wrap.style.cssText =
+				"position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
+			wrap.innerHTML = `
+				<div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
+					<div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+						<div style="font-size:16px;font-weight:700;">${esc(title)}</div>
+						<button data-x style="border:0;background:#f3f4f6;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600;">✕</button>
+					</div>
+					<div style="padding:14px 16px;overflow:auto;">${bodyHTML}</div>
+					<div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">${footerHTML || ""}</div>
+				</div>`;
+			document.body.appendChild(wrap);
+
+			const close = () => wrap.remove();
+			wrap.addEventListener("click", e => { if (e.target === wrap) close(); });
+			wrap.querySelector("[data-x]").addEventListener("click", close);
+
+			return {
+				wrap,
+				close,
+				qs: sel => wrap.querySelector(sel)
+			};
+		};
+
+		const convertText = raw => {
+			const lines = (raw || "")
+				.split(/\r?\n/)
+				.map(x => (x || "").replace(/\s+/g, " ").trim())
+				.filter(Boolean);
+
+			return lines.map((line, i) => {
+				const safe = line.replace(/'/g, "''");
+				return `'${safe}'${i === lines.length - 1 ? "" : ","}`;
+			}).join("\n");
+		};
+
+		const modal = makeModal({
+			title: "Wrap Excel column in quotes",
+			width: "900px",
+			bodyHTML: `
+				<div style="display:flex;flex-direction:column;gap:12px;">
+					<div style="color:#374151;font-size:13px;line-height:1.4;">
+						Paste one column from Excel below. Each non-blank row will be converted to
+						<code style="padding:2px 6px;border:1px solid #eee;border-radius:8px;background:#fafafa;">'Value',</code>
+						with no comma on the last row.
+					</div>
+
+					<textarea data-input placeholder="Paste here..."
+						style="color:#111;background:#fff;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
+
+					<div data-err style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px;font-size:13px;"></div>
+
+					<div style="font-size:13px;font-weight:700;color:#111827;">Output</div>
+
+					<textarea data-output readonly
+						style="color:#111;background:#f9fafb;width:100%;min-height:220px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
+				</div>`,
+			footerHTML: `
+				<button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;">Close</button>
+				<button data-run style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Convert + Copy</button>`
+		});
+
+		const input = modal.qs("[data-input]");
+		const output = modal.qs("[data-output]");
+		const err = modal.qs("[data-err]");
+
+		const refresh = () => {
+			err.style.display = "none";
+			output.value = convertText(input.value);
+		};
+
+		input.addEventListener("input", refresh);
+		modal.qs("[data-close]").addEventListener("click", modal.close);
+
+		modal.qs("[data-run]").addEventListener("click", async () => {
+			const out = convertText(input.value);
+
+			if (!out.trim()) {
+				err.textContent = "Paste something first.";
+				err.style.display = "block";
+				return;
+			}
+
+			output.value = out;
+
+			try {
+				await navigator.clipboard.writeText(out);
+			} catch {
+				output.focus();
+				output.select();
+				document.execCommand("copy");
+			}
+
+			const btn = modal.qs("[data-run]");
+			btn.textContent = "Copied!";
+			setTimeout(() => {
+				const b = modal.qs("[data-run]");
+				if (b) b.textContent = "Convert + Copy";
+			}, 1200);
+		});
+
+		refresh();
+	}
+
+	// ==========================================
+	// TOOL 5: ELEMENT PATH INSPECTOR
 	// ==========================================
 	let inspectorActive = false;
 	const overlayDiv = document.createElement('div');
 	const tooltipDiv = document.createElement('div');
-	
+
 	overlayDiv.id = "__tool_inspector_overlay__";
 	tooltipDiv.id = "__tool_inspector_tooltip__";
 	Object.assign(overlayDiv.style, {
@@ -772,19 +1125,6 @@ function runQuoteWrapTool() {
 			document.removeEventListener('mouseover', onInspectorHover, { capture: true });
 			document.removeEventListener('click', onInspectorClick, { capture: true });
 			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none';
-		}
-	}
-
-	// ==========================================
-	// TOOL 5: PASSWORD REVEALER
-	// ==========================================
-	function togglePasswords() {
-		const inputs = Array.from(document.querySelectorAll('input'));
-		const revealed = inputs.filter(i => i.dataset.tpRevealed === 'true');
-		if (revealed.length > 0) {
-			revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
-		} else {
-			inputs.filter(i => i.type === 'password').forEach(i => { i.type = 'text'; i.dataset.tpRevealed = 'true'; });
 		}
 	}
 
@@ -877,40 +1217,40 @@ function runQuoteWrapTool() {
 					<div class="tp-status" data-s="reorder">OFF</div>
 				</div>
 
-<!-- Tool 3: Wrap Excel Column -->
-<div class="tp-item" data-i="2">
-	<div class="tp-left">
-		<div class="tp-num">3</div>
-		<div>
-			<div class="tp-name">Wrap for SQL "In" list</div>
-			<div class="tp-desc">Type or paste from Excel to wrap in quotes and comma-separate</div>
-		</div>
-	</div>
-	<div class="tp-status" data-s="quotewrap">RUN</div>
-</div>
+				<!-- Tool 3: Audit History Search -->
+				<div class="tp-item" data-i="2">
+					<div class="tp-left">
+						<div class="tp-num">3</div>
+						<div>
+							<div class="tp-name">Audit History Search</div>
+							<div class="tp-desc">Search collapsed audit rows and navigate matches</div>
+						</div>
+					</div>
+					<div class="tp-status" data-s="auditsearch">RUN</div>
+				</div>
 
-				<!-- Tool 4: Inspector -->
+				<!-- Tool 4: Wrap Excel Column -->
 				<div class="tp-item" data-i="3">
 					<div class="tp-left">
 						<div class="tp-num">4</div>
+						<div>
+							<div class="tp-name">Wrap for SQL "In" list</div>
+							<div class="tp-desc">Type or paste from Excel to wrap in quotes and comma-separate</div>
+						</div>
+					</div>
+					<div class="tp-status" data-s="quotewrap">RUN</div>
+				</div>
+
+				<!-- Tool 5: Inspector -->
+				<div class="tp-item" data-i="4">
+					<div class="tp-left">
+						<div class="tp-num">5</div>
 						<div>
 							<div class="tp-name">Element Inspector</div>
 							<div class="tp-desc">Hover to get CSS path & copy</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="inspector">OFF</div>
-				</div>
-
-				<!-- Tool 5: Password Revealer -->
-				<div class="tp-item" data-i="4">
-					<div class="tp-left">
-						<div class="tp-num">5</div>
-						<div>
-							<div class="tp-name">Reveal Passwords</div>
-							<div class="tp-desc">Show hidden passwords</div>
-						</div>
-					</div>
-					<div class="tp-status" data-s="passwords">OFF</div>
 				</div>
 			</div>
 			<div class="tp-foot">Click items to run/toggle</div>
@@ -924,7 +1264,6 @@ function runQuoteWrapTool() {
 
 	const statusReorder = root.querySelector('[data-s="reorder"]');
 	const statusInspector = root.querySelector('[data-s="inspector"]');
-	const statusPasswords = root.querySelector('[data-s="passwords"]');
 
 	let idx = 0; let drag = false; let sx = 0; let sy = 0; let startL = 0; let startT = 0;
 
@@ -939,23 +1278,18 @@ function runQuoteWrapTool() {
 			statusInspector.textContent = inspectorActive ? "ON" : "OFF";
 			statusInspector.classList.toggle("on", inspectorActive);
 		}
-		if (statusPasswords) {
-			const hasRevealed = document.querySelector('input[data-tp-revealed="true"]');
-			statusPasswords.textContent = hasRevealed ? "ON" : "OFF";
-			statusPasswords.classList.toggle("on", !!hasRevealed);
-		}
 	}
 
 	function sync() { items.forEach((el, i) => { el.classList.toggle("active", i === idx); }); }
 
 	function run(i) {
-	if (i === 0) runBulkUpdateTool();
-	if (i === 1) runImageReorderTool();
-	if (i === 2) runQuoteWrapTool();
-	if (i === 3) toggleInspector();
-	if (i === 4) togglePasswords();
-	refreshStatus();
-}
+		if (i === 0) runBulkUpdateTool();
+		if (i === 1) runImageReorderTool();
+		if (i === 2) runAuditHistorySearchTool();
+		if (i === 3) runQuoteWrapTool();
+		if (i === 4) toggleInspector();
+		refreshStatus();
+	}
 
 	function onKey(e) { if (e.key === "Escape") cleanup(); }
 
@@ -989,13 +1323,14 @@ function runQuoteWrapTool() {
 		window.removeEventListener("keydown", onKey, true);
 		window.removeEventListener("mousemove", onDragMove, true);
 		window.removeEventListener("mouseup", onDragEnd, true);
-		
+
 		document.removeEventListener('mouseover', onInspectorHover, { capture: true });
 		document.removeEventListener('click', onInspectorClick, { capture: true });
 		overlayDiv.remove(); tooltipDiv.remove();
 
-		const revealed = document.querySelectorAll('input[data-tp-revealed="true"]');
-		revealed.forEach(i => { i.type = 'password'; delete i.dataset.tpRevealed; });
+		document.getElementById("__audit_search_panel__")?.remove();
+		window.__auditSearchObserver__?.disconnect?.();
+		delete window.__auditSearchObserver__;
 
 		root.remove(); style.remove();
 		delete window.__toolPaletteCleanup__; delete window.__toolPanelBooted__;
