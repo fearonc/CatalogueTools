@@ -882,8 +882,8 @@ function runQuoteWrapTool() {
 	<div class="tp-left">
 		<div class="tp-num">3</div>
 		<div>
-			<div class="tp-name">Wrap Excel Column</div>
-			<div class="tp-desc">Paste 1 column and copy quoted rows</div>
+			<div class="tp-name">Wrap for SQL "In" list</div>
+			<div class="tp-desc">Paste 1 column from Excel to wrap in quotes and comma-separate</div>
 		</div>
 	</div>
 	<div class="tp-status" data-s="quotewrap">RUN</div>
