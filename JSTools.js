@@ -2572,8 +2572,7 @@
 					<div class="tp-status" data-s="inspector">OFF</div>
 				</div>
 			</div>
-			<div class="tp-foot">Click items to run/toggle</div>
-		</div>
+			
 
 						<!-- Tool 6: JSON Viewer -->
 				<div class="tp-item" data-i="5">
@@ -2586,6 +2585,8 @@
 					</div>
 					<div class="tp-status" data-s="jsonviewer">RUN</div>
 				</div>
+				<div class="tp-foot">Click items to run/toggle</div>
+		</div>
 	`;
 	document.body.appendChild(root);
 
