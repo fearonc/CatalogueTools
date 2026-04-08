@@ -2435,15 +2435,28 @@
 	style.id = STYLE_ID;
 	style.textContent = `
 		#${PALETTE_ID} {
-			position: fixed; right: 14px; bottom: 14px; width: 320px; z-index: 2147483647;
-			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-		}
+	position: fixed;
+	right: 14px;
+	bottom: 14px;
+	width: 320px;
+	max-height: calc(100vh - 28px);
+	z-index: 2147483647;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 		#${PALETTE_ID} * { box-sizing: border-box; }
 		#${PALETTE_ID} .tp-box {
-			width: 100%; background: rgba(15,17,23,.96); color: #e8ecf3;
-			border: 1px solid rgba(255,255,255,.12); border-radius: 14px;
-			box-shadow: 0 20px 60px rgba(0,0,0,.45); overflow: hidden; backdrop-filter: blur(8px);
-		}
+	width: 100%;
+	max-height: calc(100vh - 28px);
+	background: rgba(15,17,23,.96);
+	color: #e8ecf3;
+	border: 1px solid rgba(255,255,255,.12);
+	border-radius: 14px;
+	box-shadow: 0 20px 60px rgba(0,0,0,.45);
+	overflow: hidden;
+	backdrop-filter: blur(8px);
+	display: flex;
+	flex-direction: column;
+}
 		#${PALETTE_ID} .tp-head {
 			display: flex; justify-content: space-between; align-items: flex-start;
 			padding: 12px 12px 10px; border-bottom: 1px solid rgba(255,255,255,.08);
@@ -2455,7 +2468,12 @@
 			width: 24px; height: 24px; border-radius: 7px; cursor: pointer; font: 16px/1 monospace;
 		}
 		#${PALETTE_ID} .tp-close:hover { background: rgba(255,255,255,.12); color: #fff; }
-		#${PALETTE_ID} .tp-list { padding: 8px; }
+		#${PALETTE_ID} .tp-list {
+	padding: 8px;
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: 0;
+}
 		#${PALETTE_ID} .tp-item {
 			display: flex; justify-content: space-between; align-items: center;
 			padding: 10px 12px; border-radius: 10px; cursor: pointer; color: #dce3ee; margin-bottom: 4px;
