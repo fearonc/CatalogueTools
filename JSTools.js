@@ -2579,8 +2579,8 @@
 					<div class="tp-left">
 						<div class="tp-num">6</div>
 						<div>
-							<div class="tp-name">JSON Viewer V2</div>
-							<div class="tp-desc">Pretty JSON, HTML render, dates, search and expand matches</div>
+							<div class="tp-name">JSON Viewer</div>
+							<div class="tp-desc">Re-format MARS data into a usable view. Built-in Search</div>
 						</div>
 					</div>
 					<div class="tp-status" data-s="jsonviewer">RUN</div>
