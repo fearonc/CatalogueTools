@@ -612,9 +612,16 @@
 		refreshStatus();
 	}
 
-	function onKeyDown(e) {
-		if (e.key === 'Escape') close();
-	}
+function onKey(e) {
+	if (e.key !== "Escape") return;
+
+	const jsonViewerOpen = !!document.getElementById("__json_viewer_overlay__");
+	const imageToolsOpen = !!window.__thgImageToolsOpen;
+
+	if (jsonViewerOpen || imageToolsOpen) return;
+
+	cleanup();
+}
 
 	document.addEventListener('keydown', onKeyDown, true);
 	header.querySelector('[data-a="close"]').addEventListener('click', close);
@@ -2579,7 +2586,6 @@
 	const head = root.querySelector(".tp-head");
 
 	const statusReorder = root.querySelector('[data-s="reorder"]');
-	const statusInspector = root.querySelector('[data-s="inspector"]');
 
 	let idx = 0; let drag = false; let sx = 0; let sy = 0; let startL = 0; let startT = 0;
 
@@ -2589,10 +2595,6 @@
 			const isOpen = window.__thgImageToolsOpen === true || window.__thgReorderToolOpen === true;
 			statusReorder.textContent = isOpen ? "ON" : "OFF";
 			statusReorder.classList.toggle("on", isOpen);
-		}
-		if (statusInspector) {
-			statusInspector.textContent = inspectorActive ? "ON" : "OFF";
-			statusInspector.classList.toggle("on", inspectorActive);
 		}
 	}
 
@@ -2636,25 +2638,22 @@
 
 	// Complete teardown and memory cleanup
 	function cleanup() {
-		window.removeEventListener("keydown", onKey, true);
-		window.removeEventListener("mousemove", onDragMove, true);
-		window.removeEventListener("mouseup", onDragEnd, true);
+	window.removeEventListener("keydown", onKey, true);
+	window.removeEventListener("mousemove", onDragMove, true);
+	window.removeEventListener("mouseup", onDragEnd, true);
 
-		document.removeEventListener('mouseover', onInspectorHover, { capture: true });
-		document.removeEventListener('click', onInspectorClick, { capture: true });
-		overlayDiv.remove(); tooltipDiv.remove();
+	document.getElementById("__audit_search_panel__")?.remove();
+	window.__auditSearchObserver__?.disconnect?.();
+	delete window.__auditSearchObserver__;
 
-		document.getElementById("__audit_search_panel__")?.remove();
-		window.__auditSearchObserver__?.disconnect?.();
-		delete window.__auditSearchObserver__;
+	document.getElementById("__json_viewer_overlay__")?.remove();
 
-		// Note: The custom theme JS you paste in the toggle block will NOT be 
-		// removed when you close the toolkit. This allows you to close the 
-		// menu and keep working in Dark/Pink mode!
+	root.remove();
+	style.remove();
 
-		root.remove(); style.remove();
-		delete window.__toolPaletteCleanup__; delete window.__toolPanelBooted__;
-	}
+	delete window.__toolPaletteCleanup__;
+	delete window.__toolPanelBooted__;
+}
 
 	// Event Listeners for UI
 	items.forEach(el => { el.addEventListener("mouseenter", () => { idx = +el.dataset.i; sync(); }); });
