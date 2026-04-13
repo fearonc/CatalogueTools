@@ -2435,28 +2435,28 @@
 	style.id = STYLE_ID;
 	style.textContent = `
 		#${PALETTE_ID} {
-	position: fixed;
-	right: 14px;
-	bottom: 14px;
-	width: 320px;
-	max-height: calc(100vh - 28px);
-	z-index: 2147483647;
-	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
+			position: fixed;
+			right: 14px;
+			bottom: 14px;
+			width: 320px;
+			max-height: calc(100vh - 28px);
+			z-index: 2147483647;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		}
 		#${PALETTE_ID} * { box-sizing: border-box; }
 		#${PALETTE_ID} .tp-box {
-	width: 100%;
-	max-height: calc(100vh - 28px);
-	background: rgba(15,17,23,.96);
-	color: #e8ecf3;
-	border: 1px solid rgba(255,255,255,.12);
-	border-radius: 14px;
-	box-shadow: 0 20px 60px rgba(0,0,0,.45);
-	overflow: hidden;
-	backdrop-filter: blur(8px);
-	display: flex;
-	flex-direction: column;
-}
+			width: 100%;
+			max-height: calc(100vh - 28px);
+			background: rgba(15,17,23,.96);
+			color: #e8ecf3;
+			border: 1px solid rgba(255,255,255,.12);
+			border-radius: 14px;
+			box-shadow: 0 20px 60px rgba(0,0,0,.45);
+			overflow: hidden;
+			backdrop-filter: blur(8px);
+			display: flex;
+			flex-direction: column;
+		}
 		#${PALETTE_ID} .tp-head {
 			display: flex; justify-content: space-between; align-items: flex-start;
 			padding: 12px 12px 10px; border-bottom: 1px solid rgba(255,255,255,.08);
@@ -2469,11 +2469,11 @@
 		}
 		#${PALETTE_ID} .tp-close:hover { background: rgba(255,255,255,.12); color: #fff; }
 		#${PALETTE_ID} .tp-list {
-	padding: 8px;
-	overflow-y: auto;
-	flex: 1 1 auto;
-	min-height: 0;
-}
+			padding: 8px;
+			overflow-y: auto;
+			flex: 1 1 auto;
+			min-height: 0;
+		}
 		#${PALETTE_ID} .tp-item {
 			display: flex; justify-content: space-between; align-items: center;
 			padding: 10px 12px; border-radius: 10px; cursor: pointer; color: #dce3ee; margin-bottom: 4px;
@@ -2492,11 +2492,64 @@
 			background: rgba(255,255,255,.08); color: #cfd7e3;
 		}
 		#${PALETTE_ID} .tp-status.on { background: rgba(80,200,120,.18); color: #9ff0b3; }
+
+		/* Toggle switches CSS */
+		#${PALETTE_ID} .tp-toggles {
+			border-top: 1px solid rgba(255,255,255,.08);
+			padding: 10px 12px; display: flex; flex-direction: column; gap: 10px;
+		}
+		#${PALETTE_ID} .tp-toggle-row {
+			display: flex; justify-content: space-between; align-items: center;
+		}
+		#${PALETTE_ID} .tp-toggle-label {
+			font-size: 13px; color: #dce3ee;
+		}
+		#${PALETTE_ID} .tp-switch {
+			position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; margin: 0;
+		}
+		#${PALETTE_ID} .tp-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+		#${PALETTE_ID} .tp-slider {
+			position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+			background-color: rgba(255,255,255,0.15); transition: .3s; border-radius: 22px;
+		}
+		#${PALETTE_ID} .tp-knob {
+			position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px;
+			background-color: white; border-radius: 50%; transition: .3s;
+			display: flex; align-items: center; justify-content: center;
+			color: #111827; font-size: 11px; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+		}
+		#${PALETTE_ID} .tp-switch input:checked + .tp-slider.dark-slider { background-color: #22c55e; }
+		#${PALETTE_ID} .tp-switch input:checked + .tp-slider.pink-slider { background-color: #ec4899; }
+		#${PALETTE_ID} .tp-switch input:checked + .tp-slider .tp-knob { transform: translateX(20px); }
+		#${PALETTE_ID} .tp-switch input:checked + .tp-slider.dark-slider .tp-knob { filter: invert(1); }
+
 		#${PALETTE_ID} .tp-foot {
 			padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.08); font-size: 11px; color: #8e99aa;
 		}
+
+		/* Physical Overlay Styles */
+		#__tool_dark_overlay__ {
+			position: fixed; inset: 0; z-index: 2147483630;
+			pointer-events: none; background: rgba(0, 0, 0, 0.7);
+			display: none; transition: opacity 0.3s;
+		}
+		#__tool_pink_overlay__ {
+			position: fixed; inset: 0; z-index: 2147483631;
+			pointer-events: none; background: rgba(255, 105, 180, 0.25);
+			mix-blend-mode: multiply;
+			display: none; transition: opacity 0.3s;
+		}
 	`;
 	document.head.appendChild(style);
+
+	// Setup Overlays directly in the document root
+	const darkOverlay = document.createElement("div");
+	darkOverlay.id = "__tool_dark_overlay__";
+	document.documentElement.appendChild(darkOverlay);
+
+	const pinkOverlay = document.createElement("div");
+	pinkOverlay.id = "__tool_pink_overlay__";
+	document.documentElement.appendChild(pinkOverlay);
 
 	const root = document.createElement("div");
 	root.id = PALETTE_ID;
@@ -2571,10 +2624,8 @@
 					</div>
 					<div class="tp-status" data-s="inspector">OFF</div>
 				</div>
-			</div>
 			
-
-						<!-- Tool 6: JSON Viewer -->
+				<!-- Tool 6: JSON Viewer -->
 				<div class="tp-item" data-i="5">
 					<div class="tp-left">
 						<div class="tp-num">6</div>
@@ -2585,10 +2636,47 @@
 					</div>
 					<div class="tp-status" data-s="jsonviewer">RUN</div>
 				</div>
-				<div class="tp-foot">Click items to run/toggle</div>
+			</div>
+
+			<!-- START OVERLAY TOGGLES -->
+			<div class="tp-toggles">
+				<div class="tp-toggle-row">
+					<span class="tp-toggle-label">Dark Mode Overlay</span>
+					<label class="tp-switch">
+						<input type="checkbox" id="__tp_dark_toggle__">
+						<span class="tp-slider dark-slider">
+							<span class="tp-knob">☽</span>
+						</span>
+					</label>
+				</div>
+				<div class="tp-toggle-row">
+					<span class="tp-toggle-label">Pink Mode Overlay</span>
+					<label class="tp-switch">
+						<input type="checkbox" id="__tp_pink_toggle__">
+						<span class="tp-slider pink-slider">
+							<span class="tp-knob"></span>
+						</span>
+					</label>
+				</div>
+			</div>
+			<!-- END OVERLAY TOGGLES -->
+
+			<div class="tp-foot">Click items to run/toggle</div>
 		</div>
 	`;
 	document.body.appendChild(root);
+
+	// Setup Theme Overlay toggle event listeners
+	const darkToggle = root.querySelector("#__tp_dark_toggle__");
+	const pinkToggle = root.querySelector("#__tp_pink_toggle__");
+
+	darkToggle.addEventListener("change", (e) => {
+		darkOverlay.style.display = e.target.checked ? "block" : "none";
+	});
+
+	pinkToggle.addEventListener("change", (e) => {
+		pinkOverlay.style.display = e.target.checked ? "block" : "none";
+	});
 
 	const items = [...root.querySelectorAll(".tp-item")];
 	const closeBtn = root.querySelector(".tp-close");
@@ -2664,6 +2752,10 @@
 		document.getElementById("__audit_search_panel__")?.remove();
 		window.__auditSearchObserver__?.disconnect?.();
 		delete window.__auditSearchObserver__;
+
+		// Clean up the newly created theme overlays
+		document.getElementById("__tool_dark_overlay__")?.remove();
+		document.getElementById("__tool_pink_overlay__")?.remove();
 
 		root.remove(); style.remove();
 		delete window.__toolPaletteCleanup__; delete window.__toolPanelBooted__;
