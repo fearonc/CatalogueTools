@@ -1743,88 +1743,9 @@
 		refresh();
 	}
 
-	// ==========================================
-	// TOOL 5: ELEMENT PATH INSPECTOR
-	// ==========================================
-	let inspectorActive = false;
-	const overlayDiv = document.createElement('div');
-	const tooltipDiv = document.createElement('div');
-
-	overlayDiv.id = "__tool_inspector_overlay__";
-	tooltipDiv.id = "__tool_inspector_tooltip__";
-	Object.assign(overlayDiv.style, {
-		position: 'fixed', zIndex: '2147483645', pointerEvents: 'none', display: 'none',
-		background: 'rgba(59, 130, 246, 0.2)', border: '2px solid #3b82f6', boxSizing: 'border-box', transition: 'all 0.05s linear'
-	});
-	Object.assign(tooltipDiv.style, {
-		position: 'fixed', zIndex: '2147483646', pointerEvents: 'none', display: 'none',
-		background: '#111827', color: '#fff', padding: '6px 10px', fontSize: '11px', fontFamily: 'monospace',
-		borderRadius: '6px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', whiteSpace: 'nowrap'
-	});
-	document.documentElement.appendChild(overlayDiv);
-	document.documentElement.appendChild(tooltipDiv);
-
-	function getCssPath(el) {
-		if (!(el instanceof Element)) return;
-		const path = [];
-		while (el.nodeType === Node.ELEMENT_NODE) {
-			let selector = el.nodeName.toLowerCase();
-			if (el.id) {
-				selector += '#' + el.id; path.unshift(selector); break;
-			} else {
-				let sib = el, nth = 1;
-				while (sib = sib.previousElementSibling) { if (sib.nodeName.toLowerCase() == selector) nth++; }
-				if (nth != 1) selector += `:nth-of-type(${nth})`;
-			}
-			path.unshift(selector);
-			el = el.parentNode;
-		}
-		return path.join(" > ");
-	}
-
-	function onInspectorHover(e) {
-		if (e.target.closest(`#${PALETTE_ID}`)) {
-			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none'; return;
-		}
-		const rect = e.target.getBoundingClientRect();
-		overlayDiv.style.display = 'block';
-		overlayDiv.style.top = rect.top + 'px'; overlayDiv.style.left = rect.left + 'px';
-		overlayDiv.style.width = rect.width + 'px'; overlayDiv.style.height = rect.height + 'px';
-
-		const path = getCssPath(e.target);
-		tooltipDiv.style.display = 'block'; tooltipDiv.textContent = path;
-		let tTop = rect.bottom + 5, tLeft = rect.left;
-		if (tTop + 30 > window.innerHeight) tTop = rect.top - 30;
-		tooltipDiv.style.top = tTop + 'px'; tooltipDiv.style.left = tLeft + 'px';
-	}
-
-	function onInspectorClick(e) {
-		if (e.target.closest(`#${PALETTE_ID}`)) return;
-		e.preventDefault(); e.stopPropagation();
-		navigator.clipboard.writeText(getCssPath(e.target)).catch(() => {});
-		tooltipDiv.textContent = "Copied to clipboard!";
-		tooltipDiv.style.background = "#059669";
-		setTimeout(() => {
-			tooltipDiv.style.background = "#111827";
-			toggleInspector(); refreshStatus();
-		}, 800);
-	}
-
-	function toggleInspector() {
-		inspectorActive = !inspectorActive;
-		if (inspectorActive) {
-			document.addEventListener('mouseover', onInspectorHover, { capture: true });
-			document.addEventListener('click', onInspectorClick, { capture: true });
-		} else {
-			document.removeEventListener('mouseover', onInspectorHover, { capture: true });
-			document.removeEventListener('click', onInspectorClick, { capture: true });
-			overlayDiv.style.display = 'none'; tooltipDiv.style.display = 'none';
-		}
-	}
-
 
 	// ==========================================
-	// TOOL 6: JSON VIEWER (V2)
+	// TOOL 5: JSON VIEWER (V2)
 	// ==========================================
 	function runJsonViewerTool() {
 		try {
@@ -2590,20 +2511,8 @@
 					</div>
 					<div class="tp-status" data-s="quotewrap">RUN</div>
 				</div>
-
-				<!-- Tool 5: Inspector -->
-				<div class="tp-item" data-i="4">
-					<div class="tp-left">
-						<div class="tp-num">5</div>
-						<div>
-							<div class="tp-name">Element Inspector</div>
-							<div class="tp-desc">Hover to get CSS path & copy</div>
-						</div>
-					</div>
-					<div class="tp-status" data-s="inspector">OFF</div>
-				</div>
 			
-				<!-- Tool 6: JSON Viewer -->
+				<!-- Tool 5: JSON Viewer -->
 				<div class="tp-item" data-i="5">
 					<div class="tp-left">
 						<div class="tp-num">6</div>
@@ -2694,8 +2603,7 @@
 		if (i === 1) runImageReorderTool();
 		if (i === 2) runAuditHistorySearchTool();
 		if (i === 3) runQuoteWrapTool();
-		if (i === 4) toggleInspector();
-		if (i === 5) runJsonViewerTool();
+		if (i === 4) runJsonViewerTool();
 		refreshStatus();
 	}
 
