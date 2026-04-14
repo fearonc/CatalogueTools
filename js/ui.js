@@ -32,6 +32,7 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     #${PALETTE_ID} * { box-sizing: border-box; }
+
     #${PALETTE_ID} .tp-box {
       width: 100%;
       max-height: calc(100vh - 28px);
@@ -45,6 +46,7 @@
       display: flex;
       flex-direction: column;
     }
+
     #${PALETTE_ID} .tp-head {
       display: flex;
       justify-content: space-between;
@@ -57,7 +59,13 @@
       cursor: move;
       user-select: none;
     }
-    #${PALETTE_ID} .tp-title { font-size: 14px; color: #fff; margin-bottom: 3px; }
+
+    #${PALETTE_ID} .tp-title {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 3px;
+    }
+
     #${PALETTE_ID} .tp-close {
       border: 0;
       background: rgba(255,255,255,.06);
@@ -68,13 +76,19 @@
       cursor: pointer;
       font: 16px/1 monospace;
     }
-    #${PALETTE_ID} .tp-close:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+    #${PALETTE_ID} .tp-close:hover {
+      background: rgba(255,255,255,.12);
+      color: #fff;
+    }
+
     #${PALETTE_ID} .tp-list {
       padding: 8px;
       overflow-y: auto;
       flex: 1 1 auto;
       min-height: 0;
     }
+
     #${PALETTE_ID} .tp-item {
       display: flex;
       justify-content: space-between;
@@ -85,16 +99,23 @@
       color: #dce3ee;
       margin-bottom: 4px;
     }
-    #${PALETTE_ID} .tp-item:last-child { margin-bottom: 0; }
+
+    #${PALETTE_ID} .tp-item:last-child {
+      margin-bottom: 0;
+    }
+
     #${PALETTE_ID} .tp-item:hover,
     #${PALETTE_ID} .tp-item.active {
       background: rgba(255,255,255,.06);
     }
+
     #${PALETTE_ID} .tp-left {
       display: flex;
       gap: 10px;
       align-items: center;
+      min-width: 0;
     }
+
     #${PALETTE_ID} .tp-num {
       width: 20px;
       height: 20px;
@@ -104,22 +125,32 @@
       place-items: center;
       font-size: 11px;
       color: #fff;
+      flex: 0 0 auto;
     }
-    #${PALETTE_ID} .tp-name { font-size: 13px; }
-    #${PALETTE_ID} .tp-desc { font-size: 11px; color: #94a0b3; }
+
+    #${PALETTE_ID} .tp-name {
+      font-size: 13px;
+    }
+
+    #${PALETTE_ID} .tp-desc {
+      font-size: 11px;
+      color: #94a0b3;
+    }
+
     #${PALETTE_ID} .tp-status {
       font-size: 10px;
       padding: 3px 6px;
       border-radius: 999px;
       background: rgba(255,255,255,.08);
       color: #cfd7e3;
+      flex: 0 0 auto;
     }
-    #${PALETTE_ID} .tp-foot {
-      padding: 8px 12px;
-      border-top: 1px solid rgba(255,255,255,.08);
-      font-size: 11px;
-      color: #8e99aa;
+
+    #${PALETTE_ID} .tp-status.on {
+      background: rgba(80,200,120,.18);
+      color: #9ff0b3;
     }
+
     #${PALETTE_ID} .tp-toggles {
       border-top: 1px solid rgba(255,255,255,.08);
       padding: 10px 12px;
@@ -127,14 +158,24 @@
       flex-direction: column;
       gap: 10px;
     }
+
     #${PALETTE_ID} .tp-toggle-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
     }
+
     #${PALETTE_ID} .tp-toggle-label {
       font-size: 13px;
       color: #dce3ee;
+    }
+
+    #${PALETTE_ID} .tp-foot {
+      padding: 8px 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      font-size: 11px;
+      color: #8e99aa;
     }
   `;
   document.head.appendChild(style);
@@ -229,6 +270,7 @@
   const head = root.querySelector(".tp-head");
   const darkToggle = root.querySelector("#__ct_dark_toggle__");
   const pinkToggle = root.querySelector("#__ct_pink_toggle__");
+  const statusImageTools = root.querySelector('[data-i="1"] .tp-status');
 
   let idx = 0;
   let drag = false;
@@ -236,6 +278,19 @@
   let sy = 0;
   let startL = 0;
   let startT = 0;
+
+  function refreshStatus() {
+    if (statusImageTools) {
+      const isOpen =
+        window.__thgImageToolsOpen === true ||
+        window.__thgReorderToolOpen === true;
+
+      statusImageTools.textContent = isOpen ? "ON" : "RUN";
+      statusImageTools.classList.toggle("on", isOpen);
+    }
+  }
+
+  window.__toolPaletteRefreshStatus__ = refreshStatus;
 
   function sync() {
     items.forEach((el, i) => el.classList.toggle("active", i === idx));
@@ -247,6 +302,7 @@
     if (i === 2) CT.tools.runAuditHistorySearchTool?.();
     if (i === 3) CT.tools.runQuoteWrapTool?.();
     if (i === 4) CT.tools.runJsonViewerTool?.();
+    refreshStatus();
   }
 
   function onKey(e) {
@@ -264,19 +320,23 @@
 
     drag = true;
     const r = root.getBoundingClientRect();
+
     root.style.left = r.left + "px";
     root.style.top = r.top + "px";
     root.style.right = "auto";
     root.style.bottom = "auto";
+
     sx = e.clientX;
     sy = e.clientY;
     startL = r.left;
     startT = r.top;
+
     e.preventDefault();
   }
 
   function onDragMove(e) {
     if (!drag) return;
+
     let left = startL + (e.clientX - sx);
     let top = startT + (e.clientY - sy);
 
@@ -295,13 +355,19 @@
   }
 
   darkToggle?.addEventListener("change", (e) => {
-    if (e.target.checked) CT.tools.enableDarkOverlay?.();
-    else CT.tools.disableDarkOverlay?.();
+    if (e.target.checked) {
+      CT.tools.enableDarkOverlay?.();
+    } else {
+      CT.tools.disableDarkOverlay?.();
+    }
   });
 
   pinkToggle?.addEventListener("change", (e) => {
-    if (e.target.checked) CT.tools.enablePinkOverlay?.();
-    else CT.tools.disablePinkOverlay?.();
+    if (e.target.checked) {
+      CT.tools.enablePinkOverlay?.();
+    } else {
+      CT.tools.disablePinkOverlay?.();
+    }
   });
 
   function cleanup() {
@@ -311,6 +377,8 @@
 
     root.remove();
     style.remove();
+
+    delete window.__toolPaletteRefreshStatus__;
 
     CT.state.isOpen = false;
     delete CT.state.cleanup;
@@ -329,6 +397,8 @@
   window.addEventListener("mousemove", onDragMove, true);
   window.addEventListener("mouseup", onDragEnd, true);
   window.addEventListener("keydown", onKey, true);
+
+  refreshStatus();
 
   CT.state.isOpen = true;
   CT.state.cleanup = cleanup;
