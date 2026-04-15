@@ -10,6 +10,44 @@
 
   CT.tools.runQuoteWrapTool = function () {
     const { makeModal } = CT.utils;
+    if (!makeModal) {
+      alert("Shared modal helper not loaded.");
+      return;
+    }
+
+    const setToolOpen = (isOpen) => {
+      CT.state.quoteWrapOpen = !!isOpen;
+      CT.tools.refreshStatus?.();
+    };
+
+    const watchModalClose = (modalObj, onClosed) => {
+      if (!modalObj?.wrap) return;
+
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        onClosed?.();
+        observer.disconnect();
+      };
+
+      const observer = new MutationObserver(() => {
+        if (!document.body.contains(modalObj.wrap)) {
+          finish();
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      const originalClose = modalObj.close;
+      modalObj.close = () => {
+        try {
+          originalClose?.();
+        } finally {
+          finish();
+        }
+      };
+    };
 
     const convertText = (raw) => {
       const lines = (raw || "")
@@ -53,15 +91,8 @@
       `
     });
 
-    CT.state.quoteWrapOpen = true;
-    CT.tools.refreshStatus?.();
-
-    const originalClose = modal.close;
-    modal.close = () => {
-      CT.state.quoteWrapOpen = false;
-      CT.tools.refreshStatus?.();
-      originalClose();
-    };
+    setToolOpen(true);
+    watchModalClose(modal, () => setToolOpen(false));
 
     const input = modal.qs("[data-input]");
     const output = modal.qs("[data-output]");
