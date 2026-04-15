@@ -19,17 +19,18 @@
   if (window[BOOTSTRAP_FLAG]) return;
   window[BOOTSTRAP_FLAG] = true;
 
-  const base = "https://fearonc.github.io/CatalogueTools/js/";
-  const files = [
-    "utils.js",
-    "tools/bulk-update.js",
-    "tools/image-tools.js",
-    "tools/audit-search.js",
-    "tools/quote-wrap.js",
-    "tools/json-viewer.js",
-    "tools/overlay-toggles.js",
-    "ui.js"
-  ];
+const base = "https://fearonc.github.io/CatalogueTools/js/";
+const files = [
+  "utils.js",
+  "tools/dark-overlay.js",
+  "tools/pink-overlay.js",
+  "tools/bulk-update.js",
+  "tools/image-tools.js",
+  "tools/audit-search.js",
+  "tools/quote-wrap.js",
+  "tools/json-viewer.js",
+  "ui.js"
+];
 
   const loadScript = (src) =>
     new Promise((resolve, reject) => {
