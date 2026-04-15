@@ -355,20 +355,24 @@
   }
 
   darkToggle?.addEventListener("change", (e) => {
-    if (e.target.checked) {
-      CT.tools.enableDarkOverlay?.();
-    } else {
-      CT.tools.disableDarkOverlay?.();
-    }
-  });
+  if (e.target.checked) {
+    pinkToggle.checked = false;
+    CT.tools.disablePinkOverlay?.();
+    CT.tools.enableDarkOverlay?.();
+  } else {
+    CT.tools.disableDarkOverlay?.();
+  }
+});
 
-  pinkToggle?.addEventListener("change", (e) => {
-    if (e.target.checked) {
-      CT.tools.enablePinkOverlay?.();
-    } else {
-      CT.tools.disablePinkOverlay?.();
-    }
-  });
+pinkToggle?.addEventListener("change", (e) => {
+  if (e.target.checked) {
+    darkToggle.checked = false;
+    CT.tools.disableDarkOverlay?.();
+    CT.tools.enablePinkOverlay?.();
+  } else {
+    CT.tools.disablePinkOverlay?.();
+  }
+});
 
   function cleanup() {
     window.removeEventListener("keydown", onKey, true);
