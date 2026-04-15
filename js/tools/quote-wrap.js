@@ -53,6 +53,16 @@
       `
     });
 
+    CT.state.quoteWrapOpen = true;
+    CT.tools.refreshStatus?.();
+
+    const originalClose = modal.close;
+    modal.close = () => {
+      CT.state.quoteWrapOpen = false;
+      CT.tools.refreshStatus?.();
+      originalClose();
+    };
+
     const input = modal.qs("[data-input]");
     const output = modal.qs("[data-output]");
     const err = modal.qs("[data-err]");
