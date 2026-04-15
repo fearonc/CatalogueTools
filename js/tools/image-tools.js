@@ -25,19 +25,12 @@
     const CLOSE_TIMEOUT_MS = 15000;
     const STEP_GAP_MS = 60;
 
-    const refreshStatus = () => {
-      if (typeof window.__toolPaletteRefreshStatus__ === "function") {
-        window.__toolPaletteRefreshStatus__();
-      }
-    };
-
-    if (window.__thgImageToolsOpen) {
+    if (CT.state.imageToolsOpen) {
       return;
     }
 
-    window.__thgImageToolsOpen = true;
-    window.__thgReorderToolOpen = true;
-    refreshStatus();
+    CT.state.imageToolsOpen = true;
+    CT.tools.refreshStatus?.();
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const normSrc = (s) => String(s || "").split("?")[0].toLowerCase();
@@ -191,9 +184,8 @@
     );
 
     if (!panels.length) {
-      window.__thgImageToolsOpen = false;
-      window.__thgReorderToolOpen = false;
-      refreshStatus();
+      CT.state.imageToolsOpen = false;
+      CT.tools.refreshStatus?.();
       alert("No image tables found on this page.");
       return;
     }
@@ -313,11 +305,10 @@
     const subtitleEl = header.querySelector("#__thg_image_tool_subtitle__");
 
     function close() {
-      window.__thgImageToolsOpen = false;
-      window.__thgReorderToolOpen = false;
+      CT.state.imageToolsOpen = false;
       document.removeEventListener("keydown", onKeyDown, true);
       overlay.remove();
-      refreshStatus();
+      CT.tools.refreshStatus?.();
     }
 
     function onKeyDown(e) {
