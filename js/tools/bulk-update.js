@@ -21,35 +21,15 @@
           "'": "&#39;"
         }[m]));
 
-      const makeModal = ({ title, bodyHTML, footerHTML, width = "900px" }) => {
-        const wrap = document.createElement("div");
-        wrap.style.cssText =
-          "position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
+      const { makeModal } = CT.utils;
+      if (!makeModal) {
+        alert("Shared modal helper not loaded.");
+        return;
+      }
 
-        wrap.innerHTML = `
-          <div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
-            <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-              <div style="font-size:16px;font-weight:700;">${esc(title)}</div>
-              <button data-x style="border:0;background:#f3f4f6;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600;">✕</button>
-            </div>
-            <div style="padding:14px 16px;overflow:auto;">${bodyHTML}</div>
-            <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">${footerHTML || ""}</div>
-          </div>
-        `;
-
-        document.body.appendChild(wrap);
-
-        const close = () => wrap.remove();
-        wrap.addEventListener("click", (e) => {
-          if (e.target === wrap) close();
-        });
-        wrap.querySelector("[data-x]").addEventListener("click", close);
-
-        return {
-          wrap,
-          close,
-          qs: (sel) => wrap.querySelector(sel)
-        };
+      const setToolOpen = (isOpen) => {
+        CT.state.bulkUpdateOpen = !!isOpen;
+        CT.tools.refreshStatus?.();
       };
 
       const ROOT = document.querySelector("#complexForm") || document;
@@ -184,13 +164,11 @@
         `
       });
 
-      CT.state.bulkUpdateOpen = true;
-      CT.tools.refreshStatus?.();
+      setToolOpen(true);
 
       const originalPasteClose = pasteModal.close;
       pasteModal.close = () => {
-        CT.state.bulkUpdateOpen = false;
-        CT.tools.refreshStatus?.();
+        setToolOpen(false);
         originalPasteClose();
       };
 
@@ -279,7 +257,7 @@
             : ["(none)"])
         ].join("\n");
 
-        const m = makeModal({
+        const reportModal = makeModal({
           title: "Bulk update — report",
           width: "980px",
           bodyHTML: `
@@ -299,30 +277,28 @@
           `
         });
 
-        CT.state.bulkUpdateOpen = true;
-        CT.tools.refreshStatus?.();
+        setToolOpen(true);
 
-        const originalReportClose = m.close;
-        m.close = () => {
-          CT.state.bulkUpdateOpen = false;
-          CT.tools.refreshStatus?.();
+        const originalReportClose = reportModal.close;
+        reportModal.close = () => {
+          setToolOpen(false);
           originalReportClose();
         };
 
-        m.qs("[data-close]").addEventListener("click", m.close);
-        m.qs("[data-copy]").addEventListener("click", async () => {
+        reportModal.qs("[data-close]").addEventListener("click", reportModal.close);
+        reportModal.qs("[data-copy]").addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(allText);
           } catch {
-            const t = m.qs("[data-out]");
+            const t = reportModal.qs("[data-out]");
             t.value = allText;
             t.select();
             document.execCommand("copy");
           }
 
-          m.qs("[data-copy]").textContent = "Copied!";
+          reportModal.qs("[data-copy]").textContent = "Copied!";
           setTimeout(() => {
-            const b = m.qs("[data-copy]");
+            const b = reportModal.qs("[data-copy]");
             if (b) b.textContent = "Copy report";
           }, 1200);
         });
