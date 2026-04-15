@@ -9,12 +9,18 @@
   if (CT.loaded.jsonViewer) return;
 
   CT.tools.runJsonViewerTool = function () {
+    const setToolOpen = (isOpen) => {
+      CT.state.jsonViewerOpen = !!isOpen;
+      CT.tools.refreshStatus?.();
+    };
+
     try {
       const existing = document.getElementById("__json_viewer_overlay__");
       if (existing) {
-        CT.state.jsonViewerOpen = false;
-        CT.tools.refreshStatus?.();
+        setToolOpen(false);
         existing.remove();
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
         return;
       }
 
@@ -29,7 +35,6 @@
         const alt = pre ? pre.innerText.trim() : rawText;
         data = JSON.parse(alt);
       }
-
 
       const overlay = document.createElement("div");
       overlay.id = "__json_viewer_overlay__";
@@ -184,10 +189,8 @@
       `;
 
       document.body.appendChild(overlay);
+      setToolOpen(true);
 
-CT.state.jsonViewerOpen = true;
-CT.tools.refreshStatus?.();
-      
       const oldHtmlOverflow = document.documentElement.style.overflow;
       const oldBodyOverflow = document.body.style.overflow;
       document.documentElement.style.overflow = "hidden";
@@ -208,6 +211,7 @@ CT.tools.refreshStatus?.();
 
       let searchHits = [];
       let currentHitIndex = -1;
+      let isClosed = false;
 
       const isHtmlString = (value) => {
         if (typeof value !== "string") return false;
@@ -603,9 +607,10 @@ CT.tools.refreshStatus?.();
       });
 
       const closeViewer = () => {
+        if (isClosed) return;
+        isClosed = true;
         restorePageScroll();
-        CT.state.jsonViewerOpen = false;
-        CT.tools.refreshStatus?.();
+        setToolOpen(false);
         overlay.remove();
         document.removeEventListener("keydown", escHandler, true);
       };
@@ -632,8 +637,7 @@ CT.tools.refreshStatus?.();
         if (status.textContent === "Viewer loaded") status.textContent = "";
       }, 1200);
     } catch (e) {
-      CT.state.jsonViewerOpen = false;
-      CT.tools.refreshStatus?.();
+      setToolOpen(false);
       console.error("JSON viewer failed:", e);
       alert("Could not parse valid JSON from this page.");
     }
