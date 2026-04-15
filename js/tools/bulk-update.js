@@ -32,35 +32,6 @@
         CT.tools.refreshStatus?.();
       };
 
-      const watchModalClose = (modalObj, onClosed) => {
-        if (!modalObj?.wrap) return;
-
-        let done = false;
-        const finish = () => {
-          if (done) return;
-          done = true;
-          onClosed?.();
-          observer.disconnect();
-        };
-
-        const observer = new MutationObserver(() => {
-          if (!document.body.contains(modalObj.wrap)) {
-            finish();
-          }
-        });
-
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        const originalClose = modalObj.close;
-        modalObj.close = () => {
-          try {
-            originalClose?.();
-          } finally {
-            finish();
-          }
-        };
-      };
-
       const ROOT = document.querySelector("#complexForm") || document;
       const TABLE = ROOT.querySelector("table.data-table");
       if (!TABLE) {
@@ -167,9 +138,12 @@
         }
       }
 
+      setToolOpen(true);
+
       const pasteModal = makeModal({
         title: "Bulk update — paste Excel TSV",
         width: "980px",
+        onClose: () => setToolOpen(false),
         bodyHTML: `
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div style="color:#374151;font-size:13px;line-height:1.35;">
@@ -192,9 +166,6 @@
           <button data-start style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Start</button>
         `
       });
-
-      setToolOpen(true);
-      watchModalClose(pasteModal, () => setToolOpen(false));
 
       let cancelled = false;
       pasteModal.qs("[data-cancel]").addEventListener("click", () => {
@@ -281,9 +252,12 @@
             : ["(none)"])
         ].join("\n");
 
+        setToolOpen(true);
+
         const reportModal = makeModal({
           title: "Bulk update — report",
           width: "980px",
+          onClose: () => setToolOpen(false),
           bodyHTML: `
             <div style="display:flex;flex-direction:column;gap:10px;">
               <div style="padding:10px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:12px;">
@@ -300,9 +274,6 @@
             <button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Close</button>
           `
         });
-
-        setToolOpen(true);
-        watchModalClose(reportModal, () => setToolOpen(false));
 
         reportModal.qs("[data-close]").addEventListener("click", reportModal.close);
         reportModal.qs("[data-copy]").addEventListener("click", async () => {
