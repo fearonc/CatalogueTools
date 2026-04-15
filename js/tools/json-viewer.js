@@ -38,7 +38,7 @@
             inset: 0;
             background: #111827;
             color: #e5e7eb;
-            z-index: 2147483647;
+            z-index: 2147483646;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
             display: flex;
             flex-direction: column;
