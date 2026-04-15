@@ -20,35 +20,6 @@
       CT.tools.refreshStatus?.();
     };
 
-    const watchModalClose = (modalObj, onClosed) => {
-      if (!modalObj?.wrap) return;
-
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        onClosed?.();
-        observer.disconnect();
-      };
-
-      const observer = new MutationObserver(() => {
-        if (!document.body.contains(modalObj.wrap)) {
-          finish();
-        }
-      });
-
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      const originalClose = modalObj.close;
-      modalObj.close = () => {
-        try {
-          originalClose?.();
-        } finally {
-          finish();
-        }
-      };
-    };
-
     const convertText = (raw) => {
       const lines = (raw || "")
         .split(/\r?\n/)
@@ -88,11 +59,11 @@
       footerHTML: `
         <button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:700;">Close</button>
         <button data-run style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Convert + Copy</button>
-      `
+      `,
+      onClose: () => setToolOpen(false)
     });
 
     setToolOpen(true);
-    watchModalClose(modal, () => setToolOpen(false));
 
     const input = modal.qs("[data-input]");
     const output = modal.qs("[data-output]");
