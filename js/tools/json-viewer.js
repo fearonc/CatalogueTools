@@ -30,8 +30,6 @@
         data = JSON.parse(alt);
       }
 
-      CT.state.jsonViewerOpen = true;
-      CT.tools.refreshStatus?.();
 
       const overlay = document.createElement("div");
       overlay.id = "__json_viewer_overlay__";
@@ -187,6 +185,9 @@
 
       document.body.appendChild(overlay);
 
+CT.state.jsonViewerOpen = true;
+CT.tools.refreshStatus?.();
+      
       const oldHtmlOverflow = document.documentElement.style.overflow;
       const oldBodyOverflow = document.body.style.overflow;
       document.documentElement.style.overflow = "hidden";
