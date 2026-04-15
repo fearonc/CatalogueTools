@@ -9,6 +9,11 @@
   if (CT.loaded.imageTools) return;
 
   CT.tools.runImageReorderTool = async function () {
+    const setToolOpen = (isOpen) => {
+      CT.state.imageToolsOpen = !!isOpen;
+      CT.tools.refreshStatus?.();
+    };
+
     const PANEL_SELECTOR = 'div.panel.panel-default';
     const HEADING_SELECTOR = '.panel-heading';
     const TABLE_BODY_SELECTOR = 'table.table.table-striped tbody';
@@ -29,8 +34,7 @@
       return;
     }
 
-    CT.state.imageToolsOpen = true;
-    CT.tools.refreshStatus?.();
+    setToolOpen(true);
 
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const normSrc = (s) => String(s || "").split("?")[0].toLowerCase();
@@ -184,8 +188,7 @@
     );
 
     if (!panels.length) {
-      CT.state.imageToolsOpen = false;
-      CT.tools.refreshStatus?.();
+      setToolOpen(false);
       alert("No image tables found on this page.");
       return;
     }
@@ -305,10 +308,9 @@
     const subtitleEl = header.querySelector("#__thg_image_tool_subtitle__");
 
     function close() {
-      CT.state.imageToolsOpen = false;
       document.removeEventListener("keydown", onKeyDown, true);
       overlay.remove();
-      CT.tools.refreshStatus?.();
+      setToolOpen(false);
     }
 
     function onKeyDown(e) {
