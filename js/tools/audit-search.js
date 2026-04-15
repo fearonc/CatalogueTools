@@ -255,6 +255,9 @@
       `;
       document.body.appendChild(panel);
 
+      CT.state.auditSearchOpen = true;
+      CT.tools.refreshStatus?.();
+
       const updatePanel = () => {
         panel.querySelector("[data-summary]").innerHTML = `
           <div><b>Term:</b> ${term}</div>
@@ -306,6 +309,9 @@
         delete window.__auditSearchObserver__;
         clearRowStyles();
         document.querySelectorAll("tr").forEach(tr => clearMarks(tr));
+
+        CT.state.auditSearchOpen = false;
+        CT.tools.refreshStatus?.();
       };
 
       panel.querySelector("[data-prev]").addEventListener("click", () => {
