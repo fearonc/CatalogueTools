@@ -12,6 +12,8 @@
     try {
       const existing = document.getElementById("__json_viewer_overlay__");
       if (existing) {
+        CT.state.jsonViewerOpen = false;
+        CT.tools.refreshStatus?.();
         existing.remove();
         return;
       }
@@ -27,6 +29,9 @@
         const alt = pre ? pre.innerText.trim() : rawText;
         data = JSON.parse(alt);
       }
+
+      CT.state.jsonViewerOpen = true;
+      CT.tools.refreshStatus?.();
 
       const overlay = document.createElement("div");
       overlay.id = "__json_viewer_overlay__";
@@ -598,6 +603,8 @@
 
       const closeViewer = () => {
         restorePageScroll();
+        CT.state.jsonViewerOpen = false;
+        CT.tools.refreshStatus?.();
         overlay.remove();
         document.removeEventListener("keydown", escHandler, true);
       };
@@ -624,6 +631,8 @@
         if (status.textContent === "Viewer loaded") status.textContent = "";
       }, 1200);
     } catch (e) {
+      CT.state.jsonViewerOpen = false;
+      CT.tools.refreshStatus?.();
       console.error("JSON viewer failed:", e);
       alert("Could not parse valid JSON from this page.");
     }
