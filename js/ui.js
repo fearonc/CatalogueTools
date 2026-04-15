@@ -251,7 +251,7 @@
               <div class="tp-desc">Paste from Excel to update Relationship options</div>
             </div>
           </div>
-          <div class="tp-status">RUN</div>
+          <div class="tp-status" data-s="bulk">RUN</div>
         </div>
 
         <div class="tp-item" data-i="1">
@@ -262,7 +262,7 @@
               <div class="tp-desc">Reorder images or free up / normalise slots</div>
             </div>
           </div>
-          <div class="tp-status">RUN</div>
+          <div class="tp-status" data-s="imageTools">RUN</div>
         </div>
 
         <div class="tp-item" data-i="2">
@@ -273,7 +273,7 @@
               <div class="tp-desc">Search collapsed audit rows and navigate matches</div>
             </div>
           </div>
-          <div class="tp-status">RUN</div>
+          <div class="tp-status" data-s="auditSearch">RUN</div>
         </div>
 
         <div class="tp-item" data-i="3">
@@ -284,7 +284,7 @@
               <div class="tp-desc">Type or paste from Excel to wrap in quotes</div>
             </div>
           </div>
-          <div class="tp-status">RUN</div>
+          <div class="tp-status" data-s="quoteWrap">RUN</div>
         </div>
 
         <div class="tp-item" data-i="4">
@@ -295,7 +295,7 @@
               <div class="tp-desc">Pretty JSON with search</div>
             </div>
           </div>
-          <div class="tp-status">RUN</div>
+          <div class="tp-status" data-s="jsonViewer">RUN</div>
         </div>
       </div>
 
@@ -325,35 +325,41 @@
   `;
   document.body.appendChild(root);
 
+const statusBulk = root.querySelector('[data-s="bulk"]');
+const statusImageTools = root.querySelector('[data-s="imageTools"]');
+const statusAuditSearch = root.querySelector('[data-s="auditSearch"]');
+const statusQuoteWrap = root.querySelector('[data-s="quoteWrap"]');
+const statusJsonViewer = root.querySelector('[data-s="jsonViewer"]');
+
+function refreshStatus() {
+  const set = (el, isOn) => {
+    if (!el) return;
+    el.textContent = isOn ? "ON" : "RUN";
+    el.classList.toggle("on", !!isOn);
+  };
+
+  set(statusBulk, !!CT.state.bulkUpdateOpen);
+  set(statusImageTools, !!CT.state.imageToolsOpen);
+  set(statusAuditSearch, !!CT.state.auditSearchOpen);
+  set(statusQuoteWrap, !!CT.state.quoteWrapOpen);
+  set(statusJsonViewer, !!CT.state.jsonViewerOpen);
+}
+
+CT.tools.refreshStatus = refreshStatus;
+  
   const items = [...root.querySelectorAll(".tp-item")];
   const closeBtn = root.querySelector(".tp-close");
   const head = root.querySelector(".tp-head");
   const darkToggle = root.querySelector("#__ct_dark_toggle__");
   const pinkToggle = root.querySelector("#__ct_pink_toggle__");
   darkToggle.checked = !!document.getElementById("sdp-dark-overlay-style");
-pinkToggle.checked = !!document.getElementById("sdp-pink-overlay-style");
-  const statusImageTools = root.querySelector('[data-i="1"] .tp-status');
-
+  pinkToggle.checked = !!document.getElementById("sdp-pink-overlay-style");
   let idx = 0;
-  let drag = false;
-  let sx = 0;
-  let sy = 0;
-  let startL = 0;
-  let startT = 0;
-
-  function refreshStatus() {
-    if (statusImageTools) {
-      const isOpen =
-        window.__thgImageToolsOpen === true ||
-        window.__thgReorderToolOpen === true;
-
-      statusImageTools.textContent = isOpen ? "ON" : "RUN";
-      statusImageTools.classList.toggle("on", isOpen);
-    }
-  }
-
-  window.__toolPaletteRefreshStatus__ = refreshStatus;
-
+let drag = false;
+let sx = 0;
+let sy = 0;
+let startL = 0;
+let startT = 0;
   function sync() {
     items.forEach((el, i) => el.classList.toggle("active", i === idx));
   }
@@ -444,7 +450,7 @@ pinkToggle?.addEventListener("change", (e) => {
     root.remove();
     style.remove();
 
-    delete window.__toolPaletteRefreshStatus__;
+ delete CT.tools.refreshStatus;
 
     CT.state.isOpen = false;
     delete CT.state.cleanup;
