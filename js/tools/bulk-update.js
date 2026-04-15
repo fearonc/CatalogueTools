@@ -163,10 +163,10 @@
         width: "980px",
         bodyHTML: `
           <div style="display:flex;flex-direction:column;gap:10px;">
-						<div style="color:#374151;font-size:13px;line-height:1.35;">
-							Paste tab-separated values (TSV) copied from Excel. First column must be <b>SKU</b>. You <b>MUST</b> copy <b>ALL</b> expected columns, even if some are blank (in order):<br>
-							<code style="display:block;margin-top:6px;padding:8px;border:1px solid #eee;border-radius:10px;background:#fafafa;white-space:pre-wrap;">${esc(expectedCols.join(" | "))}</code>
-						</div>
+            <div style="color:#374151;font-size:13px;line-height:1.35;">
+              Paste tab-separated values (TSV) copied from Excel. First column must be <b>SKU</b>. You <b>MUST</b> copy <b>ALL</b> expected columns, even if some are blank (in order):<br>
+              <code style="display:block;margin-top:6px;padding:8px;border:1px solid #eee;border-radius:10px;background:#fafafa;white-space:pre-wrap;">${esc(expectedCols.join(" | "))}</code>
+            </div>
             <textarea data-ta placeholder="Paste here…" style="width:100%;min-height:340px;resize:vertical;padding:10px;border:1px solid #d1d5db;border-radius:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;line-height:1.35;"></textarea>
             <div data-err style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px;font-size:13px;"></div>
             <div style="display:flex;gap:10px;align-items:center;">
@@ -183,6 +183,16 @@
           <button data-start style="border:0;background:#2563eb;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Start</button>
         `
       });
+
+      CT.state.bulkUpdateOpen = true;
+      CT.tools.refreshStatus?.();
+
+      const originalPasteClose = pasteModal.close;
+      pasteModal.close = () => {
+        CT.state.bulkUpdateOpen = false;
+        CT.tools.refreshStatus?.();
+        originalPasteClose();
+      };
 
       let cancelled = false;
       pasteModal.qs("[data-cancel]").addEventListener("click", () => {
@@ -288,6 +298,16 @@
             <button data-close style="border:0;background:#f3f4f6;border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:800;">Close</button>
           `
         });
+
+        CT.state.bulkUpdateOpen = true;
+        CT.tools.refreshStatus?.();
+
+        const originalReportClose = m.close;
+        m.close = () => {
+          CT.state.bulkUpdateOpen = false;
+          CT.tools.refreshStatus?.();
+          originalReportClose();
+        };
 
         m.qs("[data-close]").addEventListener("click", m.close);
         m.qs("[data-copy]").addEventListener("click", async () => {
