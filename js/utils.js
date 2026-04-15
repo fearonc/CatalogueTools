@@ -21,10 +21,16 @@
       "'": "&#39;"
     }[m]));
 
-  CT.utils.makeModal = ({ title, bodyHTML, footerHTML = "", width = "900px" }) => {
+  CT.utils.makeModal = ({
+    title,
+    bodyHTML,
+    footerHTML = "",
+    width = "900px",
+    onClose
+  }) => {
     const wrap = document.createElement("div");
     wrap.style.cssText =
-      "position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
+      "position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;";
 
     wrap.innerHTML = `
       <div style="width:min(${width},98vw);max-height:92vh;background:#fff;border-radius:12px;box-shadow:0 10px 35px rgba(0,0,0,.25);display:flex;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
@@ -39,10 +45,25 @@
 
     document.body.appendChild(wrap);
 
-    const close = () => wrap.remove();
+    let closed = false;
+
+    const close = () => {
+      if (closed) return;
+      closed = true;
+
+      try {
+        onClose?.();
+      } catch (err) {
+        console.error("makeModal onClose failed:", err);
+      }
+
+      wrap.remove();
+    };
+
     wrap.addEventListener("click", (e) => {
       if (e.target === wrap) close();
     });
+
     wrap.querySelector("[data-x]")?.addEventListener("click", close);
 
     return {
