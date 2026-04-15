@@ -325,6 +325,14 @@
   `;
   document.body.appendChild(root);
 
+CT.state.bulkUpdateOpen = false;
+CT.state.quoteWrapOpen = false;
+CT.state.auditSearchOpen = !!document.getElementById("__audit_search_panel__");
+CT.state.jsonViewerOpen = !!document.getElementById("__json_viewer_overlay__");
+CT.state.imageToolsOpen =
+  !!window.__thgImageToolsOpen ||
+  !!window.__thgReorderToolOpen;
+
 const statusBulk = root.querySelector('[data-s="bulk"]');
 const statusImageTools = root.querySelector('[data-s="imageTools"]');
 const statusAuditSearch = root.querySelector('[data-s="auditSearch"]');
@@ -338,11 +346,18 @@ function refreshStatus() {
     el.classList.toggle("on", !!isOn);
   };
 
-  set(statusBulk, !!CT.state.bulkUpdateOpen);
-  set(statusImageTools, !!CT.state.imageToolsOpen);
-  set(statusAuditSearch, !!CT.state.auditSearchOpen);
-  set(statusQuoteWrap, !!CT.state.quoteWrapOpen);
-  set(statusJsonViewer, !!CT.state.jsonViewerOpen);
+  set(statusBulk, CT.state.bulkUpdateOpen === true);
+
+  set(
+    statusImageTools,
+    CT.state.imageToolsOpen === true ||
+      window.__thgImageToolsOpen === true ||
+      window.__thgReorderToolOpen === true
+  );
+
+  set(statusAuditSearch, CT.state.auditSearchOpen === true);
+  set(statusQuoteWrap, CT.state.quoteWrapOpen === true);
+  set(statusJsonViewer, CT.state.jsonViewerOpen === true);
 }
 
 CT.tools.refreshStatus = refreshStatus;
