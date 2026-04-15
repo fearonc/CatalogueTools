@@ -32,6 +32,35 @@
         CT.tools.refreshStatus?.();
       };
 
+      const watchModalClose = (modalObj, onClosed) => {
+        if (!modalObj?.wrap) return;
+
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          onClosed?.();
+          observer.disconnect();
+        };
+
+        const observer = new MutationObserver(() => {
+          if (!document.body.contains(modalObj.wrap)) {
+            finish();
+          }
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        const originalClose = modalObj.close;
+        modalObj.close = () => {
+          try {
+            originalClose?.();
+          } finally {
+            finish();
+          }
+        };
+      };
+
       const ROOT = document.querySelector("#complexForm") || document;
       const TABLE = ROOT.querySelector("table.data-table");
       if (!TABLE) {
@@ -165,12 +194,7 @@
       });
 
       setToolOpen(true);
-
-      const originalPasteClose = pasteModal.close;
-      pasteModal.close = () => {
-        setToolOpen(false);
-        originalPasteClose();
-      };
+      watchModalClose(pasteModal, () => setToolOpen(false));
 
       let cancelled = false;
       pasteModal.qs("[data-cancel]").addEventListener("click", () => {
@@ -278,12 +302,7 @@
         });
 
         setToolOpen(true);
-
-        const originalReportClose = reportModal.close;
-        reportModal.close = () => {
-          setToolOpen(false);
-          originalReportClose();
-        };
+        watchModalClose(reportModal, () => setToolOpen(false));
 
         reportModal.qs("[data-close]").addEventListener("click", reportModal.close);
         reportModal.qs("[data-copy]").addEventListener("click", async () => {
