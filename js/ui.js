@@ -28,7 +28,7 @@
       bottom: 14px;
       width: 320px;
       max-height: calc(100vh - 28px);
-      z-index: 2147483647;
+      z-index: 2147483649;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     #${PALETTE_ID} * { box-sizing: border-box; }
