@@ -170,7 +170,57 @@
       font-size: 13px;
       color: #dce3ee;
     }
-
+#${PALETTE_ID} .tp-switch {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+  flex-shrink: 0;
+  margin: 0;
+}
+#${PALETTE_ID} .tp-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+#${PALETTE_ID} .tp-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: rgba(255,255,255,0.15);
+  transition: .3s;
+  border-radius: 22px;
+}
+#${PALETTE_ID} .tp-knob {
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: .3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  font-size: 11px;
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+#${PALETTE_ID} .tp-switch input:checked + .tp-slider.dark-slider {
+  background-color: #22c55e;
+}
+#${PALETTE_ID} .tp-switch input:checked + .tp-slider.pink-slider {
+  background-color: #ec4899;
+}
+#${PALETTE_ID} .tp-switch input:checked + .tp-slider .tp-knob {
+  transform: translateX(20px);
+}
+#${PALETTE_ID} .tp-switch input:checked + .tp-slider.dark-slider .tp-knob {
+  filter: invert(1);
+}
     #${PALETTE_ID} .tp-foot {
       padding: 8px 12px;
       border-top: 1px solid rgba(255,255,255,.08);
@@ -249,16 +299,26 @@
         </div>
       </div>
 
-      <div class="tp-toggles">
-        <div class="tp-toggle-row">
-          <span class="tp-toggle-label">Dark Overlay</span>
-          <input type="checkbox" id="__ct_dark_toggle__">
-        </div>
-        <div class="tp-toggle-row">
-          <span class="tp-toggle-label">Pink Overlay</span>
-          <input type="checkbox" id="__ct_pink_toggle__">
-        </div>
-      </div>
+  <div class="tp-toggles">
+  <div class="tp-toggle-row">
+    <span class="tp-toggle-label">Dark Mode Overlay</span>
+    <label class="tp-switch">
+      <input type="checkbox" id="__ct_dark_toggle__">
+      <span class="tp-slider dark-slider">
+        <span class="tp-knob">☽</span>
+      </span>
+    </label>
+  </div>
+  <div class="tp-toggle-row">
+    <span class="tp-toggle-label">Pink Mode Overlay</span>
+    <label class="tp-switch">
+      <input type="checkbox" id="__ct_pink_toggle__">
+      <span class="tp-slider pink-slider">
+        <span class="tp-knob"></span>
+      </span>
+    </label>
+  </div>
+</div>
 
       <div class="tp-foot">Click items to run</div>
     </div>
@@ -270,6 +330,8 @@
   const head = root.querySelector(".tp-head");
   const darkToggle = root.querySelector("#__ct_dark_toggle__");
   const pinkToggle = root.querySelector("#__ct_pink_toggle__");
+  darkToggle.checked = !!document.getElementById("sdp-dark-overlay-style");
+pinkToggle.checked = !!document.getElementById("sdp-pink-overlay-style");
   const statusImageTools = root.querySelector('[data-i="1"] .tp-status');
 
   let idx = 0;
