@@ -23,9 +23,11 @@
       const TABLE_SELECTOR = 'table.table';
       const PANEL_ID = "__audit_search_panel__";
 
-      document.getElementById(PANEL_ID)?.remove();
-      window.__auditSearchObserver__?.disconnect?.();
-      delete window.__auditSearchObserver__;
+     document.getElementById(PANEL_ID)?.remove();
+window.__auditSearchObserver__?.disconnect?.();
+delete window.__auditSearchObserver__;
+CT.state.auditSearchOpen = false;
+CT.tools.refreshStatus?.();
 
       const startRows = [...document.querySelectorAll(START_ROW_SELECTOR)];
       if (!startRows.length) {
@@ -201,10 +203,12 @@
         }
       }
 
-      if (!results.length) {
-        alert(`No matches found for "${term}".`);
-        return;
-      }
+     if (!results.length) {
+  CT.state.auditSearchOpen = false;
+  CT.tools.refreshStatus?.();
+  alert(`No matches found for "${term}".`);
+  return;
+}
 
       let activeIndex = 0;
 
