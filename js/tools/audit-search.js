@@ -13,6 +13,11 @@
       const sleep = ms => new Promise(r => setTimeout(r, ms));
       const norm = s => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
 
+      const setToolOpen = (isOpen) => {
+        CT.state.auditSearchOpen = !!isOpen;
+        CT.tools.refreshStatus?.();
+      };
+
       const term = prompt("Search audit history for term:");
       if (!term || !term.trim()) return;
 
@@ -23,11 +28,10 @@
       const TABLE_SELECTOR = 'table.table';
       const PANEL_ID = "__audit_search_panel__";
 
-     document.getElementById(PANEL_ID)?.remove();
-window.__auditSearchObserver__?.disconnect?.();
-delete window.__auditSearchObserver__;
-CT.state.auditSearchOpen = false;
-CT.tools.refreshStatus?.();
+      document.getElementById(PANEL_ID)?.remove();
+      window.__auditSearchObserver__?.disconnect?.();
+      delete window.__auditSearchObserver__;
+      setToolOpen(false);
 
       const startRows = [...document.querySelectorAll(START_ROW_SELECTOR)];
       if (!startRows.length) {
@@ -203,12 +207,11 @@ CT.tools.refreshStatus?.();
         }
       }
 
-     if (!results.length) {
-  CT.state.auditSearchOpen = false;
-  CT.tools.refreshStatus?.();
-  alert(`No matches found for "${term}".`);
-  return;
-}
+      if (!results.length) {
+        setToolOpen(false);
+        alert(`No matches found for "${term}".`);
+        return;
+      }
 
       let activeIndex = 0;
 
@@ -259,8 +262,7 @@ CT.tools.refreshStatus?.();
       `;
       document.body.appendChild(panel);
 
-      CT.state.auditSearchOpen = true;
-      CT.tools.refreshStatus?.();
+      setToolOpen(true);
 
       const updatePanel = () => {
         panel.querySelector("[data-summary]").innerHTML = `
@@ -314,8 +316,7 @@ CT.tools.refreshStatus?.();
         clearRowStyles();
         document.querySelectorAll("tr").forEach(tr => clearMarks(tr));
 
-        CT.state.auditSearchOpen = false;
-        CT.tools.refreshStatus?.();
+        setToolOpen(false);
       };
 
       panel.querySelector("[data-prev]").addEventListener("click", () => {
