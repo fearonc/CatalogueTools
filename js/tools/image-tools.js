@@ -263,7 +263,7 @@
     const gapTabBtn = document.createElement("button");
     gapTabBtn.type = "button";
     gapTabBtn.dataset.tab = "gaps";
-    gapTabBtn.textContent = "Free up / normalise slots";
+    gapTabBtn.textContent = "Free up / Clean Up slots";
     gapTabBtn.style.cssText = `
       padding: 10px 14px;
       border: 0;
@@ -336,7 +336,7 @@
 
       subtitleEl.textContent = isReorder
         ? "Drag within a section only. Apply will reorder each section independently."
-        : "Use “Normalise all sections” to clean up numbering across the whole page, or free up one or more slots in selected sections.";
+        : "Use “Clean Up all sections” to clean up numbering across the whole page, or free up one or more slots in selected sections.";
     }
 
     reorderTabBtn.addEventListener("click", () => switchTab("reorder"));
@@ -599,7 +599,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button data-a="all" style="padding:8px 10px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Select all</button>
             <button data-a="none" style="padding:8px 10px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Clear</button>
-            <button data-a="normaliseAll" style="padding:8px 10px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Normalise all sections</button>
+            <button data-a="normaliseAll" style="padding:8px 10px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Clean Up all sections</button>
             <button data-a="applyGaps" style="padding:8px 10px;border:1px solid #111;background:#111;color:#fff;border-radius:8px;cursor:pointer;">Apply gaps</button>
           </div>
         </div>
@@ -715,7 +715,7 @@
       }
     }
 
-    function setGapBusyState(isBusy, applyText = "Apply gaps", normaliseText = "Normalise all sections") {
+    function setGapBusyState(isBusy, applyText = "Apply gaps", normaliseText = "Clean Up all sections") {
       applyGapsBtn.disabled = isBusy;
       normaliseBtn.disabled = isBusy;
       sharedPositionsInput.disabled = isBusy || uniqueToggle.checked;
@@ -863,7 +863,7 @@
     setGapStatus(
       `Detected ${gapSections.length} section(s):\n` +
       gapSections.map((s) => `• ${s.title} (${s.initial.length})`).join("\n") +
-      `\n\nUse “Normalise all sections” to clean up the whole page, or choose one or more sections and click “Apply gaps”.`
+      `\n\nUse “Clean Up all sections” to clean up the whole page, or choose one or more sections and click “Apply gaps”.`
     );
 
     async function normaliseAllSections() {
@@ -886,22 +886,22 @@
 
         if (errors.length) {
           setGapStatus(
-            `Normalise finished with some issues.\n\n` +
+            `Clean Up finished with some issues.\n\n` +
             errors.map((e) => `• ${e}`).join("\n") +
             `\n\nRefresh the page if the table numbers do not update immediately.`
           );
-          alert(`Normalise finished with ${errors.length} issue(s). Check the status box / console.`);
+          alert(`Clean Up finished with ${errors.length} issue(s). Check the status box / console.`);
         } else {
           setGapStatus(
-            `Done.\nAll sections have been normalised.\nRefresh the page if the table numbers do not update immediately.`
+            `Done.\nAll sections have been cleaned.\nRefresh the page if the table numbers do not update immediately.`
           );
         }
       } catch (err) {
         console.error(err);
-        alert(`Normalise failed: ${err.message}`);
-        setGapStatus("Normalise failed — check console for details.");
+        alert(`Clean Up failed: ${err.message}`);
+        setGapStatus("Clean Up failed — check console for details.");
       } finally {
-        setGapBusyState(false, "Apply gaps", "Normalise all sections");
+        setGapBusyState(false, "Apply gaps", "Clean Up all sections");
       }
     }
 
@@ -925,7 +925,7 @@
         return;
       }
 
-      setGapBusyState(true, "Applying…", "Normalise all sections");
+      setGapBusyState(true, "Applying…", "Clean Up all sections");
       const errors = [];
 
       try {
@@ -960,7 +960,7 @@
         alert(`Apply failed: ${err.message}`);
         setGapStatus("Apply failed — check console for details.");
       } finally {
-        setGapBusyState(false, "Apply gaps", "Normalise all sections");
+        setGapBusyState(false, "Apply gaps", "Clean Up all sections");
       }
     }
 
