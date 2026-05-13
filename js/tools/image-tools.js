@@ -183,6 +183,234 @@
       return tempSlot;
     }
 
+    // ─── CDN snapshot ──────────────────────────────────────────────────────────
+    //
+    // Walks every known panel and captures, for each image row:
+    //   • the position/order number
+    //   • the full CDN URL from the "ORIGINAL" link (td:nth-child(3) a[title="Original"])
+    //   • a suggested filename derived from the URL path
+    //
+    // Returns an array of  { sectionTitle, images: [{ order, url, filename }] }
+    //
+    // The "ORIGINAL" link sits in the 3rd <td> of each row and carries both
+    // href (the browser-resolved URL) and ng-href (the Angular template attribute).
+    // We prefer href as it is already fully resolved.
+    const ORIGINAL_LINK_SELECTOR = 'td:nth-child(3) a[title="Original"]';
+
+    function captureImageSnapshot() {
+      return panels.map((panel) => {
+        const title = getHeadingText(panel);
+        const rows  = getPanelRows(panel);
+
+        const images = rows.map((row, idx) => {
+          const anchor  = row.querySelector(ORIGINAL_LINK_SELECTOR);
+          const thumbEl = row.querySelector(THUMB_SELECTOR);
+
+          // href is the live resolved value; ng-href is the Angular template
+          // attribute. We prefer href (already resolved by the browser), fall
+          // back to ng-href in case Angular hasn't stamped href yet, then to the
+          // thumbnail src as a last resort so we always surface something.
+          const url =
+            anchor?.href ||
+            anchor?.getAttribute("ng-href") ||
+            thumbEl?.currentSrc ||
+            thumbEl?.src ||
+            "";
+
+          // Derive a human-readable filename from the URL's last path segment.
+          // e.g. "https://s1.thcdn.com//productimg/original/0-29253...819.jpg"
+          //   → "0-29253...819.jpg"
+          // Falls back to "image-<order>.jpg" if the URL is unparseable.
+          let filename = `image-${idx + 1}.jpg`;
+          try {
+            const parts = new URL(url).pathname.split("/").filter(Boolean);
+            if (parts.length) filename = parts[parts.length - 1];
+          } catch (_) { /* non-absolute URL — leave default */ }
+
+          const orderText = row.querySelector(ORDER_CELL_SELECTOR)?.textContent?.trim();
+          const order = Number(orderText) || idx + 1;
+
+          return { order, url, filename };
+        });
+
+        // Sort by current order so the snapshot reads naturally
+        images.sort((a, b) => a.order - b.order);
+
+        return { sectionTitle: title, images };
+      });
+    }
+
+    // ─── Floating badge + panel ────────────────────────────────────────────────
+    //
+    // buildSnapshotRow(img) — shared between first build and subsequent updates.
+    function buildSnapshotRow(img) {
+      const row = document.createElement("div");
+      row.style.cssText = `display:flex;align-items:center;gap:8px;font-size:11px;flex-wrap:wrap;padding:3px 0;border-bottom:1px solid #f0e8a0;`;
+
+      const badge = document.createElement("span");
+      badge.style.cssText = `min-width:22px;text-align:center;background:#e8e8e8;border-radius:4px;padding:1px 4px;font-weight:700;color:#333;flex-shrink:0;`;
+      badge.textContent = img.order;
+
+      const link = document.createElement("a");
+      link.href = img.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = img.url || "(no URL found)";
+      link.style.cssText = `color:#0066cc;text-decoration:underline;word-break:break-all;cursor:pointer;flex:1;min-width:0;`;
+
+      const dlBtn = document.createElement("button");
+      dlBtn.type = "button";
+      dlBtn.textContent = "⬇ Download";
+      dlBtn.title = `Download ${img.filename}`;
+      dlBtn.style.cssText = `flex-shrink:0;padding:3px 10px;font-size:11px;border:1px solid #bbb;border-radius:5px;background:#fff;cursor:pointer;white-space:nowrap;`;
+      dlBtn.addEventListener("click", async () => {
+        if (!img.url) { alert("No URL available for this image."); return; }
+        dlBtn.disabled = true;
+        dlBtn.textContent = "Downloading…";
+        try {
+          const resp = await fetch(img.url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = img.filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+          dlBtn.textContent = "✓ Saved";
+        } catch (err) {
+          console.error("Download failed:", err);
+          window.open(img.url, "_blank", "noopener,noreferrer");
+          dlBtn.textContent = "Opened in tab";
+        } finally {
+          dlBtn.disabled = false;
+        }
+      });
+
+      row.append(badge, link, dlBtn);
+      return row;
+    }
+
+    // Builds the full floating badge+panel the first time, then just refreshes
+    // the content on subsequent calls (e.g. user runs a second action).
+    function showSnapshot(snapshot) {
+      const ts = new Date().toLocaleTimeString();
+
+      // ── First call: create the badge and panel from scratch ──────────────────
+      if (!snapshotBadge) {
+
+        // Panel — the expanded view, hidden by default
+        snapshotPanel = document.createElement("div");
+        snapshotPanel.style.cssText = `
+          display: none;
+          position: fixed;
+          bottom: 60px;
+          right: 18px;
+          width: min(540px, 92vw);
+          max-height: 55vh;
+          background: #fffbea;
+          border: 1px solid #e6d96e;
+          border-radius: 12px;
+          box-shadow: 0 8px 32px rgba(0,0,0,.22);
+          z-index: 2147483646;
+          display: none;
+          flex-direction: column;
+          font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+          overflow: hidden;
+        `;
+
+        const panelHeader = document.createElement("div");
+        panelHeader.style.cssText = `
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px 8px;
+          border-bottom: 1px solid #e6d96e;
+          flex-shrink: 0;
+        `;
+
+        const panelTitle = document.createElement("div");
+        panelTitle.style.cssText = `font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;`;
+        panelTitle.innerHTML = `<span>🛡️</span><span>Pre-action image snapshot</span>`;
+
+        const panelClose = document.createElement("button");
+        panelClose.type = "button";
+        panelClose.textContent = "✕";
+        panelClose.title = "Dismiss snapshot (links will be lost)";
+        panelClose.style.cssText = `background:none;border:none;font-size:16px;cursor:pointer;color:#888;padding:0 2px;line-height:1;`;
+        panelClose.addEventListener("click", () => {
+          snapshotPanel.remove();
+          snapshotBadge.remove();
+          snapshotPanel = null;
+          snapshotBadge = null;
+          snapshotTimestamp = null;
+          snapshotList = null;
+        });
+
+        panelHeader.append(panelTitle, panelClose);
+
+        snapshotTimestamp = document.createElement("div");
+        snapshotTimestamp.style.cssText = `font-size:11px;color:#666;padding:4px 14px 6px;flex-shrink:0;`;
+
+        snapshotList = document.createElement("div");
+        snapshotList.style.cssText = `overflow-y:auto;padding:6px 14px 12px;flex:1;min-height:0;`;
+
+        snapshotPanel.append(panelHeader, snapshotTimestamp, snapshotList);
+        document.body.appendChild(snapshotPanel);
+
+        // Badge — the small persistent pill in the corner
+        snapshotBadge = document.createElement("button");
+        snapshotBadge.type = "button";
+        snapshotBadge.innerHTML = `🛡️ <span style="font-size:11px;">Image snapshot</span>`;
+        snapshotBadge.style.cssText = `
+          position: fixed;
+          bottom: 18px;
+          right: 18px;
+          z-index: 2147483647;
+          background: #f5c400;
+          color: #222;
+          border: none;
+          border-radius: 20px;
+          padding: 7px 14px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(0,0,0,.25);
+          font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+        `;
+        snapshotBadge.addEventListener("click", () => {
+          const isOpen = snapshotPanel.style.display === "flex";
+          snapshotPanel.style.display = isOpen ? "none" : "flex";
+        });
+        document.body.appendChild(snapshotBadge);
+      }
+
+      // ── Every call: refresh timestamp and content ────────────────────────────
+      snapshotTimestamp.textContent = `Snapshot taken at ${ts} — before last action. Close the main tool, scroll to check your images, then come back here if you need to recover one.`;
+      snapshotList.innerHTML = "";
+
+      for (const section of snapshot) {
+        const sectionTitle = document.createElement("div");
+        sectionTitle.style.cssText = `font-size:12px;font-weight:700;margin:8px 0 4px;`;
+        sectionTitle.textContent = `${section.sectionTitle} (${section.images.length} image${section.images.length !== 1 ? "s" : ""})`;
+        snapshotList.append(sectionTitle);
+
+        for (const img of section.images) {
+          snapshotList.append(buildSnapshotRow(img));
+        }
+      }
+
+      // Open the panel automatically so the user sees it straight away
+      snapshotPanel.style.display = "flex";
+    }
+    // ───────────────────────────────────────────────────────────────────────────
+
     const panels = Array.from(document.querySelectorAll(PANEL_SELECTOR)).filter(
       (p) => p.querySelector(TABLE_BODY_SELECTOR) && getPanelRows(p).length
     );
@@ -238,6 +466,16 @@
         <button data-a="close" style="padding:8px 10px;border:1px solid #ccc;background:#fff;border-radius:8px;cursor:pointer;">Close</button>
       </div>
     `;
+
+    // ─── Floating snapshot badge (lives on the page, outside the modal) ─────────
+    // Built lazily in showSnapshot() the first time an action runs.
+    // Persists after the main UI is closed so the user can always get back
+    // to their download links.
+    let snapshotBadge      = null;   // the small corner pill
+    let snapshotPanel      = null;   // the expanded panel it opens
+    let snapshotTimestamp  = null;
+    let snapshotList       = null;
+    // ───────────────────────────────────────────────────────────────────────────
 
     const tabBar = document.createElement("div");
     tabBar.style.cssText = `
@@ -336,7 +574,7 @@
 
       subtitleEl.textContent = isReorder
         ? "Drag within a section only. Apply will reorder each section independently."
-        : "Use “Clean Up all sections” to clean up numbering across the whole page, or free up one or more slots in selected sections.";
+        : 'Use "Clean Up all sections" to clean up numbering across the whole page, or free up one or more slots in selected sections.';
     }
 
     reorderTabBtn.addEventListener("click", () => switchTab("reorder"));
@@ -528,12 +766,15 @@
       btn.disabled = true;
       btn.textContent = "Applying…";
 
+      // Snapshot before any mutations
+      showSnapshot(captureImageSnapshot());
+
       try {
         for (let i = 0; i < reorderSections.length; i++) {
           await applyReorderSection(reorderSections[i], i + 1, reorderSections.length);
         }
 
-        setReorderStatus("Done.\nIf the table numbers don’t refresh immediately, refresh the page to confirm.");
+        setReorderStatus("Done.\nIf the table numbers don't refresh immediately, refresh the page to confirm.");
         btn.textContent = "Done";
       } catch (err) {
         console.error(err);
@@ -863,11 +1104,15 @@
     setGapStatus(
       `Detected ${gapSections.length} section(s):\n` +
       gapSections.map((s) => `• ${s.title} (${s.initial.length})`).join("\n") +
-      `\n\nUse “Clean Up all sections” to clean up the whole page, or choose one or more sections and click “Apply gaps”.`
+      `\n\nUse "Clean Up all sections" to clean up the whole page, or choose one or more sections and click "Apply gaps".`
     );
 
     async function normaliseAllSections() {
       setGapBusyState(true, "Apply gaps", "Normalising…");
+
+      // Snapshot before any mutations
+      showSnapshot(captureImageSnapshot());
+
       const errors = [];
 
       try {
@@ -924,6 +1169,9 @@
         alert(err.message);
         return;
       }
+
+      // Snapshot before any mutations
+      showSnapshot(captureImageSnapshot());
 
       setGapBusyState(true, "Applying…", "Clean Up all sections");
       const errors = [];
