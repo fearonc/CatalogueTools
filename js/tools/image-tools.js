@@ -188,19 +188,74 @@
     // Walks every known panel and captures, for each image row:
     //   • the position/order number
     //   • the full CDN URL from the "ORIGINAL" link (td:nth-child(3) a[title="Original"])
-    //   • a suggested filename derived from the URL path
+    //   • a filename built from the SKU and section identity, matching the
+    //     platform's naming convention:
     //
-    // Returns an array of  { sectionTitle, images: [{ order, url, filename }] }
+    //     Base section:             {SKU}-{order}.jpg          e.g. 123456-1.jpg
+    //     Channel/locale section:   {SKU}-{order}-{channel}-{locale}.jpg
+    //                               e.g. 123456-1-cbeauty-en_GB.jpg
     //
     // The "ORIGINAL" link sits in the 3rd <td> of each row and carries both
     // href (the browser-resolved URL) and ng-href (the Angular template attribute).
     // We prefer href as it is already fully resolved.
     const ORIGINAL_LINK_SELECTOR = 'td:nth-child(3) a[title="Original"]';
 
+    // Extract the SKU from the page URL.
+    // URL pattern: /product/{SKU}/images
+    // Falls back to "unknown-sku" so filenames are still useful if the pattern
+    // ever changes.
+    function getSkuFromUrl() {
+      const match = window.location.hash.match(/\/product\/([^\/]+)\/images/i);
+      return match ? match[1] : "unknown-sku";
+    }
+
+    // Parse a section heading into its channel/locale parts, or signal that it
+    // is the Base section.
+    //
+    // Heading examples:
+    //   "Channel : cbeauty Locale: en_GB"  → { isBase: false, channel: "cbeauty", locale: "en_GB" }
+    //   "Images" / anything unrecognised   → { isBase: true }
+    //
+    // The regex is intentionally loose with spacing and capitalisation so minor
+    // heading variations don't break it.
+    function parseSectionHeading(headingText) {
+      const m = headingText.match(/channel\s*:\s*(\S+)\s*[\|]?\s*locale\s*:\s*(\S+)/i);
+      if (m) {
+        return { isBase: false, channel: m[1].trim(), locale: m[2].trim() };
+      }
+      return { isBase: true };
+    }
+
+    // Build the download filename for a single image.
+    //   sku      — e.g. "123456"
+    //   order    — position number within the section, e.g. 2
+    //   heading  — parsed result from parseSectionHeading()
+    //   url      — CDN URL, used only to grab the file extension
+    function buildFilename(sku, order, heading, url) {
+      // Preserve the original file extension (usually .jpg) from the CDN URL.
+      let ext = ".jpg";
+      try {
+        const pathname = new URL(url).pathname;
+        const lastSegment = pathname.split("/").filter(Boolean).pop() || "";
+        const dotIdx = lastSegment.lastIndexOf(".");
+        if (dotIdx !== -1) ext = lastSegment.slice(dotIdx).toLowerCase();
+      } catch (_) { /* non-absolute URL — keep .jpg */ }
+
+      if (heading.isBase) {
+        // Base:  123456-1.jpg
+        return `${sku}-${order}${ext}`;
+      }
+      // Channel/locale:  123456-1-cbeauty-en_GB.jpg
+      return `${sku}-${order}-${heading.channel}-${heading.locale}${ext}`;
+    }
+
     function captureImageSnapshot() {
+      const sku = getSkuFromUrl();
+
       return panels.map((panel) => {
-        const title = getHeadingText(panel);
-        const rows  = getPanelRows(panel);
+        const title   = getHeadingText(panel);
+        const heading = parseSectionHeading(title);
+        const rows    = getPanelRows(panel);
 
         const images = rows.map((row, idx) => {
           const anchor  = row.querySelector(ORIGINAL_LINK_SELECTOR);
@@ -217,18 +272,10 @@
             thumbEl?.src ||
             "";
 
-          // Derive a human-readable filename from the URL's last path segment.
-          // e.g. "https://s1.thcdn.com//productimg/original/0-29253...819.jpg"
-          //   → "0-29253...819.jpg"
-          // Falls back to "image-<order>.jpg" if the URL is unparseable.
-          let filename = `image-${idx + 1}.jpg`;
-          try {
-            const parts = new URL(url).pathname.split("/").filter(Boolean);
-            if (parts.length) filename = parts[parts.length - 1];
-          } catch (_) { /* non-absolute URL — leave default */ }
-
           const orderText = row.querySelector(ORDER_CELL_SELECTOR)?.textContent?.trim();
           const order = Number(orderText) || idx + 1;
+
+          const filename = buildFilename(sku, order, heading, url);
 
           return { order, url, filename };
         });
@@ -255,7 +302,7 @@
       link.href = img.url;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = img.url || "(no URL found)";
+      link.textContent = img.filename || img.url || "(no URL found)";
       link.style.cssText = `color:#0066cc;text-decoration:underline;word-break:break-all;cursor:pointer;flex:1;min-width:0;`;
 
       const dlBtn = document.createElement("button");
