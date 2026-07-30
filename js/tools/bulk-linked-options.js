@@ -40,9 +40,69 @@
         CT.tools.refreshStatus?.();
       };
 
-      /*
-       * Page elements used to add a linked SKU.
-       */
+      const DUPLICATE_OPTION_CLASS =
+        "__ct_linked_duplicate_option__";
+
+      const DUPLICATE_STYLE_ID =
+        "__ct_linked_duplicate_option_style__";
+
+      const ensureDuplicateStyle = () => {
+        if (
+          document.getElementById(
+            DUPLICATE_STYLE_ID
+          )
+        ) {
+          return;
+        }
+
+        const style =
+          document.createElement("style");
+
+        style.id =
+          DUPLICATE_STYLE_ID;
+
+        style.textContent = `
+          select.${DUPLICATE_OPTION_CLASS} {
+            color: #b91c1c !important;
+            border-color: #dc2626 !important;
+            background-color: #fef2f2 !important;
+            box-shadow:
+              0 0 0 1px #dc2626 inset !important;
+            font-weight: 700 !important;
+          }
+        `;
+
+        document.head.appendChild(style);
+      };
+
+      const clearDuplicateHighlights = () => {
+        document
+          .querySelectorAll(
+            `select.${DUPLICATE_OPTION_CLASS}`
+          )
+          .forEach((select) => {
+            select.classList.remove(
+              DUPLICATE_OPTION_CLASS
+            );
+
+            if (
+              select.dataset
+                .ctOriginalDuplicateTitle !==
+              undefined
+            ) {
+              select.title =
+                select.dataset
+                  .ctOriginalDuplicateTitle;
+
+              delete select.dataset
+                .ctOriginalDuplicateTitle;
+            }
+          });
+      };
+
+      ensureDuplicateStyle();
+      clearDuplicateHighlights();
+
       const ADD_INPUT_SELECTOR =
         "#linkedSkuGroupCreateForm > table > tbody > " +
         "tr:nth-child(16) > td > div > input";
@@ -52,25 +112,29 @@
         "tr:nth-child(16) > td > div > button";
 
       const addInput =
-        document.querySelector(ADD_INPUT_SELECTOR);
+        document.querySelector(
+          ADD_INPUT_SELECTOR
+        );
 
       const addButton =
-        document.querySelector(ADD_BUTTON_SELECTOR);
+        document.querySelector(
+          ADD_BUTTON_SELECTOR
+        );
 
       if (!addInput) {
-        alert("Couldn't find the linked SKU input field.");
+        alert(
+          "Couldn't find the linked SKU input field."
+        );
         return;
       }
 
       if (!addButton) {
-        alert("Couldn't find the linked SKU add button.");
+        alert(
+          "Couldn't find the linked SKU add button."
+        );
         return;
       }
 
-      /*
-       * Always fetch the rows again rather than keeping the initial
-       * NodeList. New rows will be added while the script is running.
-       */
       const getRows = () => [
         ...document.querySelectorAll(
           'tr[ng-repeat="entry in vm.group.productInfo"]'
@@ -89,7 +153,9 @@
         if (!row) return "";
 
         const cells =
-          row.querySelectorAll("td.ng-binding");
+          row.querySelectorAll(
+            "td.ng-binding"
+          );
 
         return cells.length >= 2
           ? cells[1].textContent.trim()
@@ -99,13 +165,14 @@
       const findRowBySku = (sku) =>
         getRows().find(
           (row) =>
-            norm(getSkuFromRow(row)) === norm(sku)
+            norm(getSkuFromRow(row)) ===
+            norm(sku)
         ) || null;
 
-      /*
-       * Set the add-SKU input in a way Angular recognises.
-       */
-      const setInputValue = (input, value) => {
+      const setInputValue = (
+        input,
+        value
+      ) => {
         const setter =
           Object.getOwnPropertyDescriptor(
             window.HTMLInputElement.prototype,
@@ -145,21 +212,15 @@
         const target =
           norm(desiredText);
 
-        let match = null;
-
-        for (const option of select.options) {
-          const optionText =
+        const match = [
+          ...select.options
+        ].find((option) =>
+          norm(
             option.label ||
             option.textContent ||
-            "";
-
-          if (
-            norm(optionText) === target
-          ) {
-            match = option;
-            break;
-          }
-        }
+            ""
+          ) === target
+        );
 
         if (!match) {
           return {
@@ -178,7 +239,8 @@
           };
         }
 
-        select.value = match.value;
+        select.value =
+          match.value;
 
         select.dispatchEvent(
           new Event("input", {
@@ -198,12 +260,6 @@
         };
       };
 
-      /*
-       * Wait until a row matching the added SKU appears.
-       *
-       * Looking for the SKU itself is safer than relying only on
-       * the row count because the page may reorder or refresh rows.
-       */
       const waitForSkuRow = async (
         sku,
         timeoutMs = 3000
@@ -227,36 +283,142 @@
         return null;
       };
 
-      const collectErrorSkus = () => {
-        const errorElements = [
-          ...document.querySelectorAll(
-            ".has-error select, " +
-            ".has-error input.form-control"
-          )
-        ];
-
-        return [
-          ...new Set(
-            errorElements
-              .map((element) =>
-                getSkuFromRow(
-                  element.closest("tr")
-                )
+      const collectErrorSkus = () => [
+        ...new Set(
+          [
+            ...document.querySelectorAll(
+              ".has-error select, " +
+              ".has-error input.form-control"
+            )
+          ]
+            .map((element) =>
+              getSkuFromRow(
+                element.closest("tr")
               )
-              .filter(Boolean)
+            )
+            .filter(Boolean)
+        )
+      ];
+
+      const scanDuplicateOptions = () => {
+        clearDuplicateHighlights();
+
+        const optionGroups =
+          new Map();
+
+        for (const row of getRows()) {
+          const sku =
+            getSkuFromRow(row);
+
+          const select =
+            row.querySelector("select");
+
+          if (!select) continue;
+
+          const selectedOption =
+            select.options[
+              select.selectedIndex
+            ];
+
+          const optionText = (
+            selectedOption?.label ||
+            selectedOption?.textContent ||
+            ""
           )
-        ];
+            .replace(/\s+/g, " ")
+            .trim();
+
+          /*
+           * Ignore empty/default dropdown values.
+           */
+          if (
+            !select.value ||
+            !optionText
+          ) {
+            continue;
+          }
+
+          const key =
+            norm(optionText);
+
+          if (
+            !optionGroups.has(key)
+          ) {
+            optionGroups.set(key, {
+              optionText,
+              occurrences: []
+            });
+          }
+
+          optionGroups
+            .get(key)
+            .occurrences
+            .push({
+              sku,
+              row,
+              select
+            });
+        }
+
+        const duplicateOptions = [
+          ...optionGroups.values()
+        ]
+          .filter(
+            (group) =>
+              group.occurrences.length > 1
+          )
+          .sort((a, b) =>
+            a.optionText.localeCompare(
+              b.optionText,
+              undefined,
+              {
+                sensitivity: "base"
+              }
+            )
+          );
+
+        for (
+          const group of duplicateOptions
+        ) {
+          const affectedSkus =
+            group.occurrences
+              .map(
+                (occurrence) =>
+                  occurrence.sku ||
+                  "Unknown SKU"
+              )
+              .join(", ");
+
+          for (
+            const occurrence
+            of group.occurrences
+          ) {
+            const { select } =
+              occurrence;
+
+            select.classList.add(
+              DUPLICATE_OPTION_CLASS
+            );
+
+            if (
+              select.dataset
+                .ctOriginalDuplicateTitle ===
+              undefined
+            ) {
+              select.dataset
+                .ctOriginalDuplicateTitle =
+                select.title || "";
+            }
+
+            select.title =
+              `Duplicate option: ${group.optionText}\n` +
+              `SKUs: ${affectedSkus}`;
+          }
+        }
+
+        return duplicateOptions;
       };
 
-      /*
-       * Parse the existing two-column format:
-       *
-       * SKU <tab> Option
-       *
-       * The fallback for two or more spaces is retained from the
-       * original tool. When an SKU appears more than once, the last
-       * occurrence supplies the option value.
-       */
       const parseInput = (pasted) => {
         const optionBySku =
           new Map();
@@ -348,18 +510,20 @@
               font-size:13px;
               line-height:1.35;
             ">
-              Paste tab-separated values copied from Excel.
+              Paste tab-separated values copied
+              from Excel.
 
               <br><br>
 
-              The first column must be <b>SKU</b>.
-              The second column is the <b>Option</b> text.
+              The first column must be
+              <b>SKU</b>. The second column is
+              the <b>Option</b> text.
 
               <br><br>
 
-              Existing SKUs will have their options updated.
-              Missing SKUs will be added to the group first and
-              then have their options updated.
+              Existing SKUs will have their
+              options updated. Missing SKUs will
+              be added first and then updated.
 
               <code style="
                 display:block;
@@ -546,6 +710,7 @@
         failedAdds,
         duplicateInputSkus,
         missingOptions,
+        duplicateOptions,
         dupeSkus
       }) => {
         const section = (
@@ -632,6 +797,18 @@
               `wanted: "${item.desired}"`
           );
 
+        const duplicateOptionLines =
+          duplicateOptions.map(
+            (group) =>
+              `${group.optionText} — ` +
+              group.occurrences
+                .map(
+                  (occurrence) =>
+                    `SKU ${occurrence.sku}`
+                )
+                .join(", ")
+          );
+
         const summaryText = [
           "Run summary",
           `Input SKUs: ${stats.inputSkus}`,
@@ -642,6 +819,7 @@
           `Options changed: ${stats.changed}`,
           `Already correct / skipped: ${stats.skipped}`,
           `Option not found: ${missingOptions.length}`,
+          `Duplicate option groups: ${duplicateOptions.length}`,
           `Validation-error SKUs: ${dupeSkus.length}`
         ].join("\n");
 
@@ -649,34 +827,53 @@
           summaryText,
           "",
           "Already in group:",
-          ...(existingSkus.length
-            ? existingSkus
-            : ["(none)"]),
+          ...(
+            existingSkus.length
+              ? existingSkus
+              : ["(none)"]
+          ),
           "",
           "Newly added:",
-          ...(newlyAddedSkus.length
-            ? newlyAddedSkus
-            : ["(none)"]),
+          ...(
+            newlyAddedSkus.length
+              ? newlyAddedSkus
+              : ["(none)"]
+          ),
           "",
           "Failed additions:",
-          ...(failedAdds.length
-            ? failedAdds
-            : ["(none)"]),
+          ...(
+            failedAdds.length
+              ? failedAdds
+              : ["(none)"]
+          ),
           "",
           "Duplicate SKUs in pasted input (last row used):",
-          ...(duplicateInputSkus.length
-            ? duplicateInputSkus
-            : ["(none)"]),
+          ...(
+            duplicateInputSkus.length
+              ? duplicateInputSkus
+              : ["(none)"]
+          ),
           "",
           "Missing option text:",
-          ...(missingOptionLines.length
-            ? missingOptionLines
-            : ["(none)"]),
+          ...(
+            missingOptionLines.length
+              ? missingOptionLines
+              : ["(none)"]
+          ),
+          "",
+          "Duplicate option selections:",
+          ...(
+            duplicateOptionLines.length
+              ? duplicateOptionLines
+              : ["(none)"]
+          ),
           "",
           "Validation-error SKUs:",
-          ...(dupeSkus.length
-            ? dupeSkus
-            : ["(none)"])
+          ...(
+            dupeSkus.length
+              ? dupeSkus
+              : ["(none)"]
+          )
         ].join("\n");
 
         setToolOpen(true);
@@ -769,6 +966,23 @@
               )}
 
               ${section(
+                "Duplicate option selections — highlighted red",
+                duplicateOptions,
+                "None.",
+                duplicateOptions.length
+                  ? "error"
+                  : "neutral",
+                (group) =>
+                  `${group.optionText} — ` +
+                  group.occurrences
+                    .map(
+                      (occurrence) =>
+                        `SKU ${occurrence.sku}`
+                    )
+                    .join(", ")
+              )}
+
+              ${section(
                 "Validation errors (.has-error)",
                 dupeSkus,
                 "None.",
@@ -806,6 +1020,21 @@
             </button>
 
             <button
+              data-clear
+              style="
+                border:0;
+                background:#f3f4f6;
+                color:#111827;
+                border-radius:12px;
+                padding:10px 14px;
+                cursor:pointer;
+                font-weight:800;
+              "
+            >
+              Clear duplicate highlights
+            </button>
+
+            <button
               data-close
               style="
                 border:0;
@@ -826,6 +1055,20 @@
           .addEventListener(
             "click",
             reportModal.close
+          );
+
+        reportModal
+          .qs("[data-clear]")
+          .addEventListener(
+            "click",
+            () => {
+              clearDuplicateHighlights();
+
+              reportModal
+                .qs("[data-clear]")
+                .textContent =
+                  "Highlights cleared";
+            }
           );
 
         reportModal
@@ -872,19 +1115,29 @@
 
         if (
           failedAdds.length ||
-          missingOptions.length
+          missingOptions.length ||
+          duplicateOptions.length
         ) {
           const issues = [];
 
           if (failedAdds.length) {
             issues.push(
-              `${failedAdds.length} SKU(s) could not be added`
+              `${failedAdds.length} SKU(s) ` +
+              `could not be added`
             );
           }
 
           if (missingOptions.length) {
             issues.push(
-              `${missingOptions.length} option(s) were not found`
+              `${missingOptions.length} option(s) ` +
+              `were not found`
+            );
+          }
+
+          if (duplicateOptions.length) {
+            issues.push(
+              `${duplicateOptions.length} duplicate ` +
+              `option group(s) were found`
             );
           }
 
@@ -940,12 +1193,6 @@
           startButton.style.cursor =
             "not-allowed";
 
-          /*
-           * targetRows contains both:
-           *
-           * - Rows that already existed
-           * - Rows successfully added during this run
-           */
           const targetRows =
             new Map();
 
@@ -958,12 +1205,6 @@
           let skipped = 0;
           let updatedRows = 0;
 
-          /*
-           * Each SKU contributes:
-           *
-           * 1. One check/add step
-           * 2. One option-update step
-           */
           const totalSteps =
             orderedSkus.length * 2;
 
@@ -977,7 +1218,6 @@
 
           /*
            * Phase 1:
-           *
            * Find existing rows or add missing SKUs.
            */
           for (const sku of orderedSkus) {
@@ -1020,10 +1260,6 @@
                   sku
                 );
               } else {
-                /*
-                 * Final lookup in case the UI updated immediately
-                 * after the timeout completed.
-                 */
                 const lateRow =
                   findRowBySku(sku);
 
@@ -1058,8 +1294,7 @@
 
           /*
            * Phase 2:
-           *
-           * Update the option for every existing or newly added row.
+           * Update options for existing and added rows.
            */
           for (const sku of orderedSkus) {
             if (cancelled) break;
@@ -1067,10 +1302,6 @@
             let row =
               targetRows.get(sku);
 
-            /*
-             * Re-find the row if Angular replaced the original DOM
-             * element while refreshing the linked SKU table.
-             */
             if (
               !row ||
               !row.isConnected
@@ -1147,7 +1378,7 @@
           setProgress(
             totalSteps,
             totalSteps,
-            "Checking validation errors…"
+            "Checking validation errors and duplicate options…"
           );
 
           let dupeSkus = [];
@@ -1166,6 +1397,15 @@
               break;
             }
           }
+
+          /*
+           * Allow Angular to finish rendering the
+           * selected values before scanning.
+           */
+          await sleep(150);
+
+          const duplicateOptions =
+            scanDuplicateOptions();
 
           pasteModal.close();
 
@@ -1190,6 +1430,8 @@
             duplicateInputSkus,
 
             missingOptions,
+
+            duplicateOptions,
 
             dupeSkus
           });
