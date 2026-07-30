@@ -287,7 +287,7 @@
               </div>
 
               <div class="tp-desc">
-                Add child SKUs and populate their Relationship options
+                Add and/or update child SKUs in bulk
               </div>
             </div>
           </div>
@@ -306,11 +306,11 @@
 
             <div>
               <div class="tp-name">
-                Bulk Linked Options
+                Bulk add & update Linked SKUs
               </div>
 
               <div class="tp-desc">
-                Paste from Excel to update linked SKU options
+                Add and/or update linked SKUs in bulk
               </div>
             </div>
           </div>
