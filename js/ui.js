@@ -306,7 +306,7 @@
 
             <div>
               <div class="tp-name">
-                Bulk add & update Linked SKUs
+                Bulk Add & Update Linked SKUs
               </div>
 
               <div class="tp-desc">
