@@ -40,16 +40,22 @@
         CT.tools.refreshStatus?.();
       };
 
+      /*
+       * Highlighting
+       */
       const DUPLICATE_OPTION_CLASS =
         "__ct_linked_duplicate_option__";
 
-      const DUPLICATE_STYLE_ID =
-        "__ct_linked_duplicate_option_style__";
+      const INVALID_OPTION_CLASS =
+        "__ct_linked_invalid_option__";
 
-      const ensureDuplicateStyle = () => {
+      const OPTION_ISSUE_STYLE_ID =
+        "__ct_linked_option_issue_style__";
+
+      const ensureOptionIssueStyle = () => {
         if (
           document.getElementById(
-            DUPLICATE_STYLE_ID
+            OPTION_ISSUE_STYLE_ID
           )
         ) {
           return;
@@ -59,10 +65,11 @@
           document.createElement("style");
 
         style.id =
-          DUPLICATE_STYLE_ID;
+          OPTION_ISSUE_STYLE_ID;
 
         style.textContent = `
-          select.${DUPLICATE_OPTION_CLASS} {
+          select.${DUPLICATE_OPTION_CLASS},
+          select.${INVALID_OPTION_CLASS} {
             color: #b91c1c !important;
             border-color: #dc2626 !important;
             background-color: #fef2f2 !important;
@@ -75,34 +82,93 @@
         document.head.appendChild(style);
       };
 
-      const clearDuplicateHighlights = () => {
+      const clearOptionIssueHighlights = () => {
         document
           .querySelectorAll(
-            `select.${DUPLICATE_OPTION_CLASS}`
+            `select.${DUPLICATE_OPTION_CLASS}, ` +
+            `select.${INVALID_OPTION_CLASS}`
           )
           .forEach((select) => {
             select.classList.remove(
-              DUPLICATE_OPTION_CLASS
+              DUPLICATE_OPTION_CLASS,
+              INVALID_OPTION_CLASS
             );
 
             if (
               select.dataset
-                .ctOriginalDuplicateTitle !==
+                .ctOriginalIssueTitle !==
               undefined
             ) {
               select.title =
                 select.dataset
-                  .ctOriginalDuplicateTitle;
+                  .ctOriginalIssueTitle;
 
               delete select.dataset
-                .ctOriginalDuplicateTitle;
+                .ctOriginalIssueTitle;
             }
+
+            delete select.dataset
+              .ctOptionIssues;
           });
       };
 
-      ensureDuplicateStyle();
-      clearDuplicateHighlights();
+      const addOptionIssue = (
+        select,
+        className,
+        message
+      ) => {
+        if (!select) return;
 
+        if (
+          select.dataset
+            .ctOriginalIssueTitle ===
+          undefined
+        ) {
+          select.dataset
+            .ctOriginalIssueTitle =
+            select.title || "";
+        }
+
+        select.classList.add(
+          className
+        );
+
+        const existingMessages = (
+          select.dataset.ctOptionIssues ||
+          ""
+        )
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean);
+
+        if (
+          !existingMessages.includes(
+            message
+          )
+        ) {
+          existingMessages.push(
+            message
+          );
+        }
+
+        select.dataset.ctOptionIssues =
+          existingMessages.join("\n");
+
+        select.title = [
+          select.dataset
+            .ctOriginalIssueTitle,
+          ...existingMessages
+        ]
+          .filter(Boolean)
+          .join("\n");
+      };
+
+      ensureOptionIssueStyle();
+      clearOptionIssueHighlights();
+
+      /*
+       * Add-SKU page elements
+       */
       const ADD_INPUT_SELECTOR =
         "#linkedSkuGroupCreateForm > table > tbody > " +
         "tr:nth-child(16) > td > div > input";
@@ -135,6 +201,10 @@
         return;
       }
 
+      /*
+       * Fetch rows again each time because Angular may add
+       * or replace rows while this tool is running.
+       */
       const getRows = () => [
         ...document.querySelectorAll(
           'tr[ng-repeat="entry in vm.group.productInfo"]'
@@ -300,9 +370,11 @@
         )
       ];
 
+      /*
+       * Scan all selected options after updates and flag
+       * any option used by more than one SKU.
+       */
       const scanDuplicateOptions = () => {
-        clearDuplicateHighlights();
-
         const optionGroups =
           new Map();
 
@@ -329,7 +401,7 @@
             .trim();
 
           /*
-           * Ignore empty/default dropdown values.
+           * Ignore blank/default options.
            */
           if (
             !select.value ||
@@ -393,32 +465,23 @@
             const occurrence
             of group.occurrences
           ) {
-            const { select } =
-              occurrence;
-
-            select.classList.add(
-              DUPLICATE_OPTION_CLASS
+            addOptionIssue(
+              occurrence.select,
+              DUPLICATE_OPTION_CLASS,
+              `Duplicate option: ${group.optionText} — ` +
+              `SKUs: ${affectedSkus}`
             );
-
-            if (
-              select.dataset
-                .ctOriginalDuplicateTitle ===
-              undefined
-            ) {
-              select.dataset
-                .ctOriginalDuplicateTitle =
-                select.title || "";
-            }
-
-            select.title =
-              `Duplicate option: ${group.optionText}\n` +
-              `SKUs: ${affectedSkus}`;
           }
         }
 
         return duplicateOptions;
       };
 
+      /*
+       * Input format:
+       *
+       * SKU <tab> Option
+       */
       const parseInput = (pasted) => {
         const optionBySku =
           new Map();
@@ -818,7 +881,7 @@
           `Rows updated: ${stats.updatedRows}`,
           `Options changed: ${stats.changed}`,
           `Already correct / skipped: ${stats.skipped}`,
-          `Option not found: ${missingOptions.length}`,
+          `Invalid options: ${missingOptions.length}`,
           `Duplicate option groups: ${duplicateOptions.length}`,
           `Validation-error SKUs: ${dupeSkus.length}`
         ].join("\n");
@@ -854,7 +917,7 @@
               : ["(none)"]
           ),
           "",
-          "Missing option text:",
+          "Invalid option text:",
           ...(
             missingOptionLines.length
               ? missingOptionLines
@@ -954,11 +1017,11 @@
               )}
 
               ${section(
-                "Missing option text (not found in dropdown)",
+                "Invalid option text — highlighted red",
                 missingOptions,
                 "None.",
                 missingOptions.length
-                  ? "warning"
+                  ? "error"
                   : "neutral",
                 (item) =>
                   `SKU ${item.sku} — ` +
@@ -1031,7 +1094,7 @@
                 font-weight:800;
               "
             >
-              Clear duplicate highlights
+              Clear issue highlights
             </button>
 
             <button
@@ -1062,12 +1125,18 @@
           .addEventListener(
             "click",
             () => {
-              clearDuplicateHighlights();
+              clearOptionIssueHighlights();
 
-              reportModal
-                .qs("[data-clear]")
-                .textContent =
-                  "Highlights cleared";
+              const button =
+                reportModal.qs(
+                  "[data-clear]"
+                );
+
+              button.textContent =
+                "Highlights cleared";
+
+              button.disabled = true;
+              button.style.opacity = "0.7";
             }
           );
 
@@ -1113,40 +1182,10 @@
             }
           );
 
-        if (
-          failedAdds.length ||
-          missingOptions.length ||
-          duplicateOptions.length
-        ) {
-          const issues = [];
-
-          if (failedAdds.length) {
-            issues.push(
-              `${failedAdds.length} SKU(s) ` +
-              `could not be added`
-            );
-          }
-
-          if (missingOptions.length) {
-            issues.push(
-              `${missingOptions.length} option(s) ` +
-              `were not found`
-            );
-          }
-
-          if (duplicateOptions.length) {
-            issues.push(
-              `${duplicateOptions.length} duplicate ` +
-              `option group(s) were found`
-            );
-          }
-
-          alert(
-            "Bulk linked SKUs finished with issues:\n\n" +
-            issues.join("\n") +
-            "\n\nSee the report for details."
-          );
-        }
+        /*
+         * No additional browser alert.
+         * All issues are shown in this report.
+         */
       };
 
       startButton.addEventListener(
@@ -1294,7 +1333,7 @@
 
           /*
            * Phase 2:
-           * Update options for existing and added rows.
+           * Update options for existing and newly added rows.
            */
           for (const sku of orderedSkus) {
             if (cancelled) break;
@@ -1353,6 +1392,13 @@
                   sku,
                   desired
                 });
+
+                addOptionIssue(
+                  select,
+                  INVALID_OPTION_CLASS,
+                  `Invalid option: "${desired}" ` +
+                  `was not found in this dropdown.`
+                );
               } else if (
                 result.skipped
               ) {
@@ -1399,8 +1445,8 @@
           }
 
           /*
-           * Allow Angular to finish rendering the
-           * selected values before scanning.
+           * Allow Angular to finish rendering selected
+           * values before checking for duplicates.
            */
           await sleep(150);
 
