@@ -730,7 +730,7 @@ ${section(
               Paste tab-separated values copied from Excel.
               The first column is used to add each child SKU.
               After the rows appear, their option fields are
-              populated from the remaining columns.
+              populated from the remaining columns. Any <b>EXISTING</b> SKUs added will also be updated at the same time.
 
               <br><br>
 
