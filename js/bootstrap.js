@@ -25,7 +25,7 @@ const files = [
   "tools/dark-overlay.js",
   "tools/pink-overlay.js",
   "tools/bulk-update.js",
-  "add-child-skus.js",
+  "tools/add-child-skus.js",
   "tools/bulk-linked-options.js",
   "tools/image-tools.js",
   "tools/audit-search.js",
