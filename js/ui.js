@@ -219,67 +219,83 @@
         <button class="tp-close" title="Close">×</button>
       </div>
       <div class="tp-list">
-        <div class="tp-item active" data-i="0">
-          <div class="tp-left">
-            <div class="tp-num">1</div>
-            <div>
-              <div class="tp-name">Relationship Option Bulk Update</div>
-              <div class="tp-desc">Paste from Excel to update Relationship options</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="bulk">RUN</div>
-        </div>
-        <div class="tp-item" data-i="1">
-          <div class="tp-left">
-            <div class="tp-num">2</div>
-            <div>
-              <div class="tp-name">Bulk Linked Options</div>
-              <div class="tp-desc">Paste from Excel to update linked SKU options</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="bulkLinkedOptions">RUN</div>
-        </div>
-        <div class="tp-item" data-i="2">
-          <div class="tp-left">
-            <div class="tp-num">3</div>
-            <div>
-              <div class="tp-name">Matrix Image Tools</div>
-              <div class="tp-desc">Reorder images or free up / normalise slots</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="imageTools">RUN</div>
-        </div>
-        <div class="tp-item" data-i="3">
-          <div class="tp-left">
-            <div class="tp-num">4</div>
-            <div>
-              <div class="tp-name">Audit History Search</div>
-              <div class="tp-desc">Search collapsed audit rows and navigate matches</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="auditSearch">RUN</div>
-        </div>
-        <div class="tp-item" data-i="4">
-          <div class="tp-left">
-            <div class="tp-num">5</div>
-            <div>
-              <div class="tp-name">Wrap for SQL "In" list</div>
-              <div class="tp-desc">Type or paste from Excel to wrap in quotes</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="quoteWrap">RUN</div>
-        </div>
-        <div class="tp-item" data-i="5">
-          <div class="tp-left">
-            <div class="tp-num">6</div>
-            <div>
-              <div class="tp-name">JSON Viewer</div>
-              <div class="tp-desc">Pretty JSON with search</div>
-            </div>
-          </div>
-          <div class="tp-status" data-s="jsonViewer">RUN</div>
-        </div>
+  <div class="tp-item active" data-i="0">
+    <div class="tp-left">
+      <div class="tp-num">1</div>
+      <div>
+        <div class="tp-name">Relationship Option Bulk Update</div>
+        <div class="tp-desc">Paste from Excel to update Relationship options</div>
       </div>
+    </div>
+    <div class="tp-status" data-s="bulk">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="1">
+    <div class="tp-left">
+      <div class="tp-num">2</div>
+      <div>
+        <div class="tp-name">Bulk Add & Update Children</div>
+        <div class="tp-desc">Add child SKUs and populate their Relationship options</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="bulkAddAndUpdate">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="2">
+    <div class="tp-left">
+      <div class="tp-num">3</div>
+      <div>
+        <div class="tp-name">Bulk Linked Options</div>
+        <div class="tp-desc">Paste from Excel to update linked SKU options</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="bulkLinkedOptions">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="3">
+    <div class="tp-left">
+      <div class="tp-num">4</div>
+      <div>
+        <div class="tp-name">Matrix Image Tools</div>
+        <div class="tp-desc">Reorder images or free up / normalise slots</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="imageTools">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="4">
+    <div class="tp-left">
+      <div class="tp-num">5</div>
+      <div>
+        <div class="tp-name">Audit History Search</div>
+        <div class="tp-desc">Search collapsed audit rows and navigate matches</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="auditSearch">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="5">
+    <div class="tp-left">
+      <div class="tp-num">6</div>
+      <div>
+        <div class="tp-name">Wrap for SQL "In" list</div>
+        <div class="tp-desc">Type or paste from Excel to wrap in quotes</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="quoteWrap">RUN</div>
+  </div>
+
+  <div class="tp-item" data-i="6">
+    <div class="tp-left">
+      <div class="tp-num">7</div>
+      <div>
+        <div class="tp-name">JSON Viewer</div>
+        <div class="tp-desc">Pretty JSON with search</div>
+      </div>
+    </div>
+    <div class="tp-status" data-s="jsonViewer">RUN</div>
+  </div>
+</div>
   <div class="tp-toggles">
   <div class="tp-toggle-row">
     <span class="tp-toggle-label">Dark Mode Overlay</span>
@@ -305,6 +321,7 @@
   `;
   document.body.appendChild(root);
 CT.state.bulkUpdateOpen = false;
+CT.state.bulkAddAndUpdateOpen = false;
 CT.state.bulkLinkedOptionsOpen = false;
 CT.state.quoteWrapOpen = false;
 CT.state.auditSearchOpen = !!document.getElementById("__audit_search_panel__");
@@ -313,6 +330,7 @@ CT.state.imageToolsOpen =
   !!window.__thgImageToolsOpen ||
   !!window.__thgReorderToolOpen;
 const statusBulk = root.querySelector('[data-s="bulk"]');
+const statusBulkAddAndUpdate = root.querySelector('[data-s="bulkAddAndUpdate"]');
 const statusBulkLinkedOptions = root.querySelector('[data-s="bulkLinkedOptions"]');
 const statusImageTools = root.querySelector('[data-s="imageTools"]');
 const statusAuditSearch = root.querySelector('[data-s="auditSearch"]');
@@ -325,6 +343,7 @@ function refreshStatus() {
     el.classList.toggle("on", !!isOn);
   };
   set(statusBulk, CT.state.bulkUpdateOpen === true);
+  set(statusBulkAddAndUpdate, CT.state.bulkAddAndUpdateOpen === true);
   set(statusBulkLinkedOptions, CT.state.bulkLinkedOptionsOpen === true);
   set(
     statusImageTools,
@@ -355,14 +374,36 @@ let startT = 0;
     items.forEach((el, i) => el.classList.toggle("active", i === idx));
   }
   function run(i) {
-    if (i === 0) CT.tools.runBulkUpdateTool?.();
-    if (i === 1) CT.tools.runBulkLinkedOptionsTool?.();
-    if (i === 2) CT.tools.runImageReorderTool?.();
-    if (i === 3) CT.tools.runAuditHistorySearchTool?.();
-    if (i === 4) CT.tools.runQuoteWrapTool?.();
-    if (i === 5) CT.tools.runJsonViewerTool?.();
-    refreshStatus();
+  if (i === 0) {
+    CT.tools.runBulkUpdateTool?.();
   }
+
+  if (i === 1) {
+    CT.tools.runBulkAddAndUpdateTool?.();
+  }
+
+  if (i === 2) {
+    CT.tools.runBulkLinkedOptionsTool?.();
+  }
+
+  if (i === 3) {
+    CT.tools.runImageReorderTool?.();
+  }
+
+  if (i === 4) {
+    CT.tools.runAuditHistorySearchTool?.();
+  }
+
+  if (i === 5) {
+    CT.tools.runQuoteWrapTool?.();
+  }
+
+  if (i === 6) {
+    CT.tools.runJsonViewerTool?.();
+  }
+
+  refreshStatus();
+}
   function onKey(e) {
     if (e.key === "Escape") cleanup();
   }
