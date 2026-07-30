@@ -168,6 +168,11 @@
         ).trim();
       };
 
+      const findRowBySku = (sku) =>
+  getRows().find(
+    (row) => norm(getSkuFromRow(row)) === norm(sku)
+  ) || null;
+
       /*
        * Set an input value in a way that Angular recognises.
        */
@@ -408,12 +413,13 @@
       };
 
       const showReport = ({
-        stats,
-        failedAdds,
-        duplicateInputSkus,
-        dupeSkus,
-        missingDropdowns
-      }) => {
+  stats,
+  existingSkus,
+  failedAdds,
+  duplicateInputSkus,
+  dupeSkus,
+  missingDropdowns
+}) => {
         const section = (
           title,
           items,
@@ -476,16 +482,17 @@
         };
 
         const summaryText = [
-          "Run summary",
-          `Input SKUs: ${stats.inputSkus}`,
-          `Successfully added: ${stats.added}`,
-          `Failed / no new row: ${failedAdds.length}`,
-          `Rows updated: ${stats.updatedRows}`,
-          `Changed operations: ${stats.changed}`,
-          `Skipped blanks / unchanged: ${stats.skipped}`,
-          `Dropdown misses: ${missingDropdowns.length}`,
-          `Validation-error SKUs: ${dupeSkus.length}`
-        ].join("\n");
+  "Run summary",
+  `Input SKUs: ${stats.inputSkus}`,
+  `Newly added: ${stats.added}`,
+  `Already in relationship: ${existingSkus.length}`,
+  `Failed / no row: ${failedAdds.length}`,
+  `Rows updated: ${stats.updatedRows}`,
+  `Changed operations: ${stats.changed}`,
+  `Skipped blanks / unchanged: ${stats.skipped}`,
+  `Dropdown misses: ${missingDropdowns.length}`,
+  `Validation-error SKUs: ${dupeSkus.length}`
+].join("\n");
 
         const missingLines = missingDropdowns.map(
           (item) =>
@@ -493,10 +500,17 @@
             `${item.field}: ${item.desired}`
         );
 
-        const allText = [
-          summaryText,
-          "",
-          "Failed additions:",
+        cconst allText = [
+  summaryText,
+  "",
+  "Already in relationship:",
+  ...(
+    existingSkus.length
+      ? existingSkus
+      : ["(none)"]
+  ),
+  "",
+  "Failed additions:",
           ...(
             failedAdds.length
               ? failedAdds
@@ -566,13 +580,22 @@
               </div>
 
               ${section(
-                "Failed additions",
-                failedAdds,
-                "None.",
-                failedAdds.length
-                  ? "error"
-                  : "neutral"
-              )}
+  "Already in relationship — options updated",
+  existingSkus,
+  "None.",
+  existingSkus.length
+    ? "warning"
+    : "neutral"
+)}
+
+${section(
+  "Failed additions",
+  failedAdds,
+  "None.",
+  failedAdds.length
+    ? "error"
+    : "neutral"
+)}
 
               ${section(
                 "Duplicate SKUs in pasted input (last row used)",
@@ -926,15 +949,15 @@
           startButton.style.cursor =
             "not-allowed";
 
-          /*
-           * Only SKUs successfully added during this run
-           * are included in the update phase.
-           */
-          const successfullyAdded =
-            new Map();
-
-          const failedAdds = [];
-          const missingDropdowns = [];
+        /*
+ * Rows to update includes both newly added rows
+ * and rows already present in the relationship.
+ */
+const targetRows = new Map();
+const existingSkus = [];
+const newlyAddedSkus = [];
+const failedAdds = [];
+const missingDropdowns = [];
 
           let changed = 0;
           let skipped = 0;
@@ -954,53 +977,76 @@
             "Adding child SKUs…"
           );
 
-          /*
-           * Phase 1: Add all child SKUs.
-           */
-          for (const sku of orderedSkus) {
-            if (cancelled) break;
+         /*
+ * Phase 1:
+ *
+ * Use an existing relationship row when one is already present.
+ * Otherwise add the child SKU and wait for its new row.
+ */
+for (const sku of orderedSkus) {
+  if (cancelled) break;
 
-            const rowsBefore =
-              getRows().length;
+  const existingRow = findRowBySku(sku);
 
-            addInput.focus();
+  if (existingRow) {
+    targetRows.set(sku, existingRow);
+    existingSkus.push(sku);
 
-            setInputValue(
-              addInput,
-              sku
-            );
+    completedSteps++;
 
-            addButton.click();
+    setProgress(
+      completedSteps,
+      totalSteps,
+      `Checking child SKUs… ` +
+      `(${completedSteps}/${orderedSkus.length})`
+    );
 
-            const newRow =
-              await waitForAddedRow(
-                sku,
-                rowsBefore
-              );
+    continue;
+  }
 
-            if (
-              newRow &&
-              getRows().length > rowsBefore
-            ) {
-              successfullyAdded.set(
-                sku,
-                newRow
-              );
-            } else {
-              failedAdds.push(sku);
-            }
+  const rowsBefore = getRows().length;
 
-            completedSteps++;
+  addInput.focus();
+  setInputValue(addInput, sku);
+  addButton.click();
 
-            setProgress(
-              completedSteps,
-              totalSteps,
-              `Adding child SKUs… ` +
-              `(${completedSteps}/${orderedSkus.length})`
-            );
+  const newRow = await waitForAddedRow(
+    sku,
+    rowsBefore
+  );
 
-            await sleep(20);
-          }
+  if (
+    newRow &&
+    getRows().length > rowsBefore
+  ) {
+    targetRows.set(sku, newRow);
+    newlyAddedSkus.push(sku);
+  } else {
+    /*
+     * Check once more in case the UI reported the SKU as
+     * existing while the script was attempting to add it.
+     */
+    const rowAfterAttempt = findRowBySku(sku);
+
+    if (rowAfterAttempt) {
+      targetRows.set(sku, rowAfterAttempt);
+      existingSkus.push(sku);
+    } else {
+      failedAdds.push(sku);
+    }
+  }
+
+  completedSteps++;
+
+  setProgress(
+    completedSteps,
+    totalSteps,
+    `Adding child SKUs… ` +
+    `(${completedSteps}/${orderedSkus.length})`
+  );
+
+  await sleep(20);
+}
 
           /*
            * Phase 2: Apply the option data to each row
@@ -1010,7 +1056,7 @@
             if (cancelled) break;
 
             const row =
-              successfullyAdded.get(sku);
+  targetRows.get(sku);
 
             /*
              * If the add failed, consume its update progress
@@ -1023,7 +1069,7 @@
                 completedSteps,
                 totalSteps,
                 `Updating options… ` +
-                `(${updatedRows}/${successfullyAdded.size})`
+                `(${updatedRows}/${targetRows.size})`
               );
 
               continue;
@@ -1185,7 +1231,7 @@
               completedSteps,
               totalSteps,
               `Updating options… ` +
-              `(${updatedRows}/${successfullyAdded.size})`
+              `(${updatedRows}/${targetRows.size})`
             );
           }
 
@@ -1219,28 +1265,24 @@
           pasteModal.close();
 
           showReport({
-            stats: {
-              inputSkus:
-                orderedSkus.length,
+  stats: {
+    inputSkus: orderedSkus.length,
+    added: newlyAddedSkus.length,
+    updatedRows,
+    changed,
+    skipped
+  },
 
-              added:
-                successfullyAdded.size,
+  existingSkus,
 
-              updatedRows,
+  failedAdds,
 
-              changed,
+  duplicateInputSkus,
 
-              skipped
-            },
+  dupeSkus,
 
-            failedAdds,
-
-            duplicateInputSkus,
-
-            dupeSkus,
-
-            missingDropdowns
-          });
+  missingDropdowns
+});
         }
       );
     })();
