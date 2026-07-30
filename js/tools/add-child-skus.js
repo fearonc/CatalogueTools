@@ -500,7 +500,7 @@
             `${item.field}: ${item.desired}`
         );
 
-        cconst allText = [
+        const allText = [
   summaryText,
   "",
   "Already in relationship:",
