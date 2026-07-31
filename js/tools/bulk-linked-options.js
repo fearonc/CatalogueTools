@@ -169,37 +169,104 @@
       /*
        * Add-SKU page elements
        */
-      const ADD_INPUT_SELECTOR =
-        "#linkedSkuGroupCreateForm > table > tbody > " +
-        "tr:nth-child(16) > td > div > input";
+     const addControlsRoot =
+  document.querySelector(
+    "#linkedSkuGroupCreateForm"
+  );
 
-      const ADD_BUTTON_SELECTOR =
-        "#linkedSkuGroupCreateForm > table > tbody > " +
-        "tr:nth-child(16) > td > div > button";
+if (!addControlsRoot) {
+  alert(
+    "Couldn't find #linkedSkuGroupCreateForm."
+  );
+  return;
+}
 
-      const addInput =
-        document.querySelector(
-          ADD_INPUT_SELECTOR
-        );
+/*
+ * Find a button and input that share the same container.
+ *
+ * This avoids relying on a fixed table-row number such
+ * as tr:nth-child(16), which can change between groups.
+ */
+const addButtonCandidates = [
+  ...addControlsRoot.querySelectorAll(
+    "button"
+  )
+];
 
-      const addButton =
-        document.querySelector(
-          ADD_BUTTON_SELECTOR
-        );
+let addInput = null;
+let addButton = null;
 
-      if (!addInput) {
-        alert(
-          "Couldn't find the linked SKU input field."
-        );
-        return;
-      }
+for (const button of addButtonCandidates) {
+  const container =
+    button.closest("div, td");
 
-      if (!addButton) {
-        alert(
-          "Couldn't find the linked SKU add button."
-        );
-        return;
-      }
+  if (!container) continue;
+
+  const input =
+    container.querySelector(
+      "input[type='text'], input:not([type])"
+    );
+
+  if (!input) continue;
+
+  /*
+   * Prefer a button that visibly looks like an Add button.
+   * This supports "+", Add, and buttons with add-related
+   * title or aria-label attributes.
+   */
+  const buttonText = (
+    button.textContent ||
+    button.title ||
+    button.getAttribute("aria-label") ||
+    ""
+  )
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+  const looksLikeAddButton =
+    buttonText === "+" ||
+    buttonText === "add" ||
+    buttonText.includes("add sku") ||
+    buttonText.includes("add linked");
+
+  if (looksLikeAddButton) {
+    addInput = input;
+    addButton = button;
+    break;
+  }
+
+  /*
+   * Keep the first matching input/button pair as a
+   * fallback in case the button only contains an icon.
+   */
+  if (!addInput) {
+    addInput = input;
+    addButton = button;
+  }
+}
+
+if (!addInput || !addButton) {
+  alert(
+    "Couldn't find the linked SKU add controls."
+  );
+
+  console.warn(
+    "[CatalogueTools] Inputs found:",
+    [
+      ...addControlsRoot.querySelectorAll(
+        "input"
+      )
+    ]
+  );
+
+  console.warn(
+    "[CatalogueTools] Buttons found:",
+    addButtonCandidates
+  );
+
+  return;
+}
 
       /*
        * Fetch rows again each time because Angular may add
