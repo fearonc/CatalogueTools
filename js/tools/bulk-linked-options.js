@@ -166,36 +166,56 @@
       ensureOptionIssueStyle();
       clearOptionIssueHighlights();
 
-          /*
-       * Add-SKU page elements
+      /*
+       * Find the linked-SKU add controls.
        *
-       * Safety rule:
-       * only accept a "+" / Add button that is in the same
-       * immediate parent container as the linked-SKU textbox.
-       * There is deliberately no fallback to another form button.
+       * The add controls appear near the bottom of the form table.
+       * We scan rows from bottom to top and only accept a row that:
+       *
+       * - contains a text input
+       * - contains a button whose visible label is "+"
+       * - does not contain a Save or Remove All button
+       *
+       * This avoids hardcoding tr:nth-child(12) or tr:nth-child(16).
        */
-      const addControlsRoot =
+      const form =
         document.querySelector(
           "#linkedSkuGroupCreateForm"
         );
 
-      if (!addControlsRoot) {
+      if (!form) {
         alert(
           "Couldn't find #linkedSkuGroupCreateForm."
         );
         return;
       }
 
-      const inputCandidates = [
-        ...addControlsRoot.querySelectorAll(
-          "input[type='text'], input:not([type])"
+      const tableBody =
+        form.querySelector(
+          ":scope > table > tbody"
+        ) ||
+        form.querySelector(
+          "table > tbody"
+        );
+
+      if (!tableBody) {
+        alert(
+          "Couldn't find the linked SKU form table."
+        );
+        return;
+      }
+
+      const tableRows = [
+        ...tableBody.querySelectorAll(
+          ":scope > tr"
         )
       ];
 
       let addInput = null;
       let addButton = null;
+      let addControlsRow = null;
 
-      const getButtonLabel = (button) =>
+      const getButtonText = (button) =>
         (
           button?.textContent ||
           button?.getAttribute("aria-label") ||
@@ -206,58 +226,104 @@
           .trim()
           .toLowerCase();
 
-      const isRecognisedAddButton = (button) => {
-        if (!button) return false;
+      /*
+       * Work upwards from the final table row.
+       */
+      for (
+        let index = tableRows.length - 1;
+        index >= 0;
+        index--
+      ) {
+        const row =
+          tableRows[index];
 
-        const label =
-          getButtonLabel(button);
+        const input =
+          row.querySelector(
+            "input[type='text'], input:not([type])"
+          );
 
-        return (
-          label === "+" ||
-          label === "add" ||
-          label.includes("add sku") ||
-          label.includes("add linked")
-        );
-      };
+        if (!input) continue;
 
-      for (const input of inputCandidates) {
-        const container =
-          input.parentElement;
-
-        if (!container) continue;
-
-        /*
-         * Only direct-child buttons in the input's own
-         * immediate container are considered.
-         */
-        const candidateButtons = [
-          ...container.querySelectorAll(
-            ":scope > button"
+        const buttons = [
+          ...row.querySelectorAll(
+            "button"
           )
         ];
 
-        const button =
-          candidateButtons.find(
-            isRecognisedAddButton
+        /*
+         * Explicitly reject rows containing dangerous
+         * actions such as Save or Remove All.
+         */
+        const hasUnsafeButton =
+          buttons.some((button) => {
+            const text =
+              getButtonText(button);
+
+            return (
+              text === "save" ||
+              text.includes("save") ||
+              text === "remove all" ||
+              text.includes("remove all") ||
+              text.includes("unlink all") ||
+              text.includes("delete group")
+            );
+          });
+
+        if (hasUnsafeButton) {
+          continue;
+        }
+
+        /*
+         * Only accept the literal + button.
+         */
+        const plusButton =
+          buttons.find(
+            (button) =>
+              getButtonText(button) === "+"
           );
 
-        if (button) {
-          addInput = input;
-          addButton = button;
-          break;
+        if (!plusButton) {
+          continue;
         }
+
+        /*
+         * The input and + button must share the same
+         * immediate parent container.
+         */
+        const inputContainer =
+          input.parentElement;
+
+        if (
+          !inputContainer ||
+          plusButton.parentElement !==
+            inputContainer
+        ) {
+          continue;
+        }
+
+        addInput = input;
+        addButton = plusButton;
+        addControlsRow = row;
+        break;
       }
 
-      if (!addInput || !addButton) {
+      if (
+        !addInput ||
+        !addButton ||
+        !addControlsRow
+      ) {
         alert(
           "Couldn't safely identify the linked SKU input and + button. Nothing was clicked."
         );
 
         console.warn(
-          "[CatalogueTools] No safe linked-SKU add controls found.",
+          "[CatalogueTools] Linked SKU add-control scan failed.",
           {
-            form: addControlsRoot,
-            inputs: inputCandidates
+            tableBody,
+            rowCount:
+              tableRows.length,
+            rows:
+              tableRows
           }
         );
 
@@ -265,28 +331,37 @@
       }
 
       /*
-       * Final guard used immediately before every click.
-       * If the page changes and the stored button no longer
-       * looks like the Add control, the run stops safely.
+       * Final safety guard before each click.
        */
       const safelyClickAddButton = () => {
-        if (
-          !addButton.isConnected ||
-          !isRecognisedAddButton(addButton) ||
-          addButton.parentElement !== addInput.parentElement
-        ) {
+        const currentButtonText =
+          getButtonText(addButton);
+
+        const stillSafe =
+          addButton.isConnected &&
+          addInput.isConnected &&
+          addControlsRow.isConnected &&
+          currentButtonText === "+" &&
+          addButton.closest("tr") ===
+            addControlsRow &&
+          addInput.closest("tr") ===
+            addControlsRow &&
+          addButton.parentElement ===
+            addInput.parentElement;
+
+        if (!stillSafe) {
           console.error(
-            "[CatalogueTools] Refusing to click an unexpected button.",
+            "[CatalogueTools] Refusing to click an unverified button.",
             {
               addInput,
               addButton,
-              buttonLabel:
-                getButtonLabel(addButton)
+              addControlsRow,
+              currentButtonText
             }
           );
 
           alert(
-            "Safety check failed: the linked-SKU + button could not be verified. Nothing was clicked."
+            "Safety check failed: the linked SKU + button could not be verified. Nothing was clicked."
           );
 
           return false;
@@ -1276,11 +1351,6 @@
               }, 1200);
             }
           );
-
-        /*
-         * No additional browser alert.
-         * All issues are shown in this report.
-         */
       };
 
       startButton.addEventListener(
@@ -1377,7 +1447,7 @@
                 sku
               );
 
-                            if (!safelyClickAddButton()) {
+              if (!safelyClickAddButton()) {
                 failedAdds.push(sku);
                 break;
               }
