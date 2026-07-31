@@ -166,107 +166,135 @@
       ensureOptionIssueStyle();
       clearOptionIssueHighlights();
 
-      /*
+          /*
        * Add-SKU page elements
+       *
+       * Safety rule:
+       * only accept a "+" / Add button that is in the same
+       * immediate parent container as the linked-SKU textbox.
+       * There is deliberately no fallback to another form button.
        */
-     const addControlsRoot =
-  document.querySelector(
-    "#linkedSkuGroupCreateForm"
-  );
+      const addControlsRoot =
+        document.querySelector(
+          "#linkedSkuGroupCreateForm"
+        );
 
-if (!addControlsRoot) {
-  alert(
-    "Couldn't find #linkedSkuGroupCreateForm."
-  );
-  return;
-}
+      if (!addControlsRoot) {
+        alert(
+          "Couldn't find #linkedSkuGroupCreateForm."
+        );
+        return;
+      }
 
-/*
- * Find a button and input that share the same container.
- *
- * This avoids relying on a fixed table-row number such
- * as tr:nth-child(16), which can change between groups.
- */
-const addButtonCandidates = [
-  ...addControlsRoot.querySelectorAll(
-    "button"
-  )
-];
+      const inputCandidates = [
+        ...addControlsRoot.querySelectorAll(
+          "input[type='text'], input:not([type])"
+        )
+      ];
 
-let addInput = null;
-let addButton = null;
+      let addInput = null;
+      let addButton = null;
 
-for (const button of addButtonCandidates) {
-  const container =
-    button.closest("div, td");
+      const getButtonLabel = (button) =>
+        (
+          button?.textContent ||
+          button?.getAttribute("aria-label") ||
+          button?.getAttribute("title") ||
+          ""
+        )
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
 
-  if (!container) continue;
+      const isRecognisedAddButton = (button) => {
+        if (!button) return false;
 
-  const input =
-    container.querySelector(
-      "input[type='text'], input:not([type])"
-    );
+        const label =
+          getButtonLabel(button);
 
-  if (!input) continue;
+        return (
+          label === "+" ||
+          label === "add" ||
+          label.includes("add sku") ||
+          label.includes("add linked")
+        );
+      };
 
-  /*
-   * Prefer a button that visibly looks like an Add button.
-   * This supports "+", Add, and buttons with add-related
-   * title or aria-label attributes.
-   */
-  const buttonText = (
-    button.textContent ||
-    button.title ||
-    button.getAttribute("aria-label") ||
-    ""
-  )
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+      for (const input of inputCandidates) {
+        const container =
+          input.parentElement;
 
-  const looksLikeAddButton =
-    buttonText === "+" ||
-    buttonText === "add" ||
-    buttonText.includes("add sku") ||
-    buttonText.includes("add linked");
+        if (!container) continue;
 
-  if (looksLikeAddButton) {
-    addInput = input;
-    addButton = button;
-    break;
-  }
+        /*
+         * Only direct-child buttons in the input's own
+         * immediate container are considered.
+         */
+        const candidateButtons = [
+          ...container.querySelectorAll(
+            ":scope > button"
+          )
+        ];
 
-  /*
-   * Keep the first matching input/button pair as a
-   * fallback in case the button only contains an icon.
-   */
-  if (!addInput) {
-    addInput = input;
-    addButton = button;
-  }
-}
+        const button =
+          candidateButtons.find(
+            isRecognisedAddButton
+          );
 
-if (!addInput || !addButton) {
-  alert(
-    "Couldn't find the linked SKU add controls."
-  );
+        if (button) {
+          addInput = input;
+          addButton = button;
+          break;
+        }
+      }
 
-  console.warn(
-    "[CatalogueTools] Inputs found:",
-    [
-      ...addControlsRoot.querySelectorAll(
-        "input"
-      )
-    ]
-  );
+      if (!addInput || !addButton) {
+        alert(
+          "Couldn't safely identify the linked SKU input and + button. Nothing was clicked."
+        );
 
-  console.warn(
-    "[CatalogueTools] Buttons found:",
-    addButtonCandidates
-  );
+        console.warn(
+          "[CatalogueTools] No safe linked-SKU add controls found.",
+          {
+            form: addControlsRoot,
+            inputs: inputCandidates
+          }
+        );
 
-  return;
-}
+        return;
+      }
+
+      /*
+       * Final guard used immediately before every click.
+       * If the page changes and the stored button no longer
+       * looks like the Add control, the run stops safely.
+       */
+      const safelyClickAddButton = () => {
+        if (
+          !addButton.isConnected ||
+          !isRecognisedAddButton(addButton) ||
+          addButton.parentElement !== addInput.parentElement
+        ) {
+          console.error(
+            "[CatalogueTools] Refusing to click an unexpected button.",
+            {
+              addInput,
+              addButton,
+              buttonLabel:
+                getButtonLabel(addButton)
+            }
+          );
+
+          alert(
+            "Safety check failed: the linked-SKU + button could not be verified. Nothing was clicked."
+          );
+
+          return false;
+        }
+
+        addButton.click();
+        return true;
+      };
 
       /*
        * Fetch rows again each time because Angular may add
@@ -1349,7 +1377,10 @@ if (!addInput || !addButton) {
                 sku
               );
 
-              addButton.click();
+                            if (!safelyClickAddButton()) {
+                failedAdds.push(sku);
+                break;
+              }
 
               const addedRow =
                 await waitForSkuRow(
