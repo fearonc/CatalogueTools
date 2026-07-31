@@ -1,32 +1,17 @@
 (() => {
   const CT = (window.CatalogueTools = window.CatalogueTools || {
-    loaded: {},
-    tools: {},
-    utils: {},
-    state: {}
+    loaded: {}, tools: {}, utils: {}, state: {}
   });
 
   if (CT.loaded.bulkLinkedOptions) return;
 
   CT.tools.runBulkLinkedOptionsTool = function () {
     (async () => {
-      const sleep = (ms) =>
-        new Promise((resolve) => setTimeout(resolve, ms));
-
-      const norm = (value) =>
-        (value || "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
-
-      const esc = (value) =>
-        String(value ?? "").replace(/[&<>"']/g, (char) => ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;"
-        }[char]));
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const norm = (value) => (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+      const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[char]));
 
       const { makeModal } = CT.utils;
 
@@ -40,79 +25,57 @@
         CT.tools.refreshStatus?.();
       };
 
-      /*
-       * Highlighting
-       */
-      const DUPLICATE_OPTION_CLASS =
-        "__ct_linked_duplicate_option__";
+      const DUPLICATE_CLASS = "__ct_linked_duplicate_option__";
+      const INVALID_CLASS = "__ct_linked_invalid_option__";
+      const ISSUE_STYLE_ID = "__ct_linked_option_issue_style__";
 
-      const INVALID_OPTION_CLASS =
-        "__ct_linked_invalid_option__";
+      const ensureIssueStyle = () => {
+        if (document.getElementById(ISSUE_STYLE_ID)) return;
 
-      const OPTION_ISSUE_STYLE_ID =
-        "__ct_linked_option_issue_style__";
-
-      const ensureOptionIssueStyle = () => {
-        if (
-          document.getElementById(
-            OPTION_ISSUE_STYLE_ID
-          )
-        ) {
-          return;
-        }
-
-        const style =
-          document.createElement("style");
-
-        style.id =
-          OPTION_ISSUE_STYLE_ID;
+        const style = document.createElement("style");
+        style.id = ISSUE_STYLE_ID;
 
         style.textContent = `
-          select.${DUPLICATE_OPTION_CLASS},
-          select.${INVALID_OPTION_CLASS} {
-            color: #b91c1c !important;
-            border-color: #dc2626 !important;
-            background-color: #fef2f2 !important;
-            box-shadow:
-              0 0 0 1px #dc2626 inset !important;
-            font-weight: 700 !important;
+          select.${DUPLICATE_CLASS},
+          select.${INVALID_CLASS} {
+            color:#b91c1c !important;
+            border-color:#dc2626 !important;
+            background-color:#fef2f2 !important;
+            box-shadow:0 0 0 1px #dc2626 inset !important;
+            font-weight:700 !important;
           }
         `;
 
         document.head.appendChild(style);
       };
 
-      const clearOptionIssueHighlights = () => {
+      const clearIssueHighlights = () => {
         document
           .querySelectorAll(
-            `select.${DUPLICATE_OPTION_CLASS}, ` +
-            `select.${INVALID_OPTION_CLASS}`
+            `select.${DUPLICATE_CLASS}, select.${INVALID_CLASS}`
           )
           .forEach((select) => {
             select.classList.remove(
-              DUPLICATE_OPTION_CLASS,
-              INVALID_OPTION_CLASS
+              DUPLICATE_CLASS,
+              INVALID_CLASS
             );
 
             if (
-              select.dataset
-                .ctOriginalIssueTitle !==
+              select.dataset.ctOriginalIssueTitle !==
               undefined
             ) {
               select.title =
-                select.dataset
-                  .ctOriginalIssueTitle;
+                select.dataset.ctOriginalIssueTitle;
 
               delete select.dataset
                 .ctOriginalIssueTitle;
             }
 
-            delete select.dataset
-              .ctOptionIssues;
+            delete select.dataset.ctOptionIssues;
           });
       };
 
-      const addOptionIssue = (
+      const addIssue = (
         select,
         className,
         message
@@ -120,20 +83,16 @@
         if (!select) return;
 
         if (
-          select.dataset
-            .ctOriginalIssueTitle ===
+          select.dataset.ctOriginalIssueTitle ===
           undefined
         ) {
-          select.dataset
-            .ctOriginalIssueTitle =
+          select.dataset.ctOriginalIssueTitle =
             select.title || "";
         }
 
-        select.classList.add(
-          className
-        );
+        select.classList.add(className);
 
-        const existingMessages = (
+        const messages = (
           select.dataset.ctOptionIssues ||
           ""
         )
@@ -141,42 +100,27 @@
           .map((item) => item.trim())
           .filter(Boolean);
 
-        if (
-          !existingMessages.includes(
-            message
-          )
-        ) {
-          existingMessages.push(
-            message
-          );
+        if (!messages.includes(message)) {
+          messages.push(message);
         }
 
         select.dataset.ctOptionIssues =
-          existingMessages.join("\n");
+          messages.join("\n");
 
         select.title = [
-          select.dataset
-            .ctOriginalIssueTitle,
-          ...existingMessages
+          select.dataset.ctOriginalIssueTitle,
+          ...messages
         ]
           .filter(Boolean)
           .join("\n");
       };
 
-      ensureOptionIssueStyle();
-      clearOptionIssueHighlights();
+      ensureIssueStyle();
+      clearIssueHighlights();
 
       /*
-       * Find the linked-SKU add controls.
-       *
-       * The add controls appear near the bottom of the form table.
-       * We scan rows from bottom to top and only accept a row that:
-       *
-       * - contains a text input
-       * - contains a button whose visible label is "+"
-       * - does not contain a Save or Remove All button
-       *
-       * This avoids hardcoding tr:nth-child(12) or tr:nth-child(16).
+       * Locate the SKU input and add button using the
+       * actual Angular attributes shown in the page HTML.
        */
       const form =
         document.querySelector(
@@ -190,173 +134,81 @@
         return;
       }
 
-      const tableBody =
+      const addInput =
         form.querySelector(
-          ":scope > table > tbody"
-        ) ||
-        form.querySelector(
-          "table > tbody"
+          'input[data-ng-model="vm.addedProduct"][placeholder="Add product by SKU"]'
         );
 
-      if (!tableBody) {
+      if (!addInput) {
         alert(
-          "Couldn't find the linked SKU form table."
+          "Couldn't find the linked SKU input field."
         );
         return;
       }
 
-      const tableRows = [
-        ...tableBody.querySelectorAll(
-          ":scope > tr"
-        )
-      ];
+      const addControlsContainer =
+        addInput.closest(".input-group");
 
-      let addInput = null;
-      let addButton = null;
-      let addControlsRow = null;
+      if (!addControlsContainer) {
+        alert(
+          "Couldn't find the linked SKU input group."
+        );
+        return;
+      }
 
-      const getButtonText = (button) =>
-        (
-          button?.textContent ||
-          button?.getAttribute("aria-label") ||
-          button?.getAttribute("title") ||
+      const addButton =
+        addControlsContainer.querySelector(
+          'button[data-ng-click="vm.addProduct()"]'
+        );
+
+      if (!addButton) {
+        alert(
+          "Couldn't find the linked SKU + button."
+        );
+        return;
+      }
+
+      /*
+       * The script will only click the button if it still
+       * matches the known add-product control.
+       */
+      const safelyClickAddButton = () => {
+        const buttonText = (
+          addButton.textContent ||
+          addButton.getAttribute("aria-label") ||
+          addButton.getAttribute("title") ||
           ""
         )
           .replace(/\s+/g, " ")
           .trim()
           .toLowerCase();
 
-      /*
-       * Work upwards from the final table row.
-       */
-      for (
-        let index = tableRows.length - 1;
-        index >= 0;
-        index--
-      ) {
-        const row =
-          tableRows[index];
-
-        const input =
-          row.querySelector(
-            "input[type='text'], input:not([type])"
-          );
-
-        if (!input) continue;
-
-        const buttons = [
-          ...row.querySelectorAll(
-            "button"
-          )
-        ];
-
-        /*
-         * Explicitly reject rows containing dangerous
-         * actions such as Save or Remove All.
-         */
-        const hasUnsafeButton =
-          buttons.some((button) => {
-            const text =
-              getButtonText(button);
-
-            return (
-              text === "save" ||
-              text.includes("save") ||
-              text === "remove all" ||
-              text.includes("remove all") ||
-              text.includes("unlink all") ||
-              text.includes("delete group")
-            );
-          });
-
-        if (hasUnsafeButton) {
-          continue;
-        }
-
-        /*
-         * Only accept the literal + button.
-         */
-        const plusButton =
-          buttons.find(
-            (button) =>
-              getButtonText(button) === "+"
-          );
-
-        if (!plusButton) {
-          continue;
-        }
-
-        /*
-         * The input and + button must share the same
-         * immediate parent container.
-         */
-        const inputContainer =
-          input.parentElement;
-
-        if (
-          !inputContainer ||
-          plusButton.parentElement !==
-            inputContainer
-        ) {
-          continue;
-        }
-
-        addInput = input;
-        addButton = plusButton;
-        addControlsRow = row;
-        break;
-      }
-
-      if (
-        !addInput ||
-        !addButton ||
-        !addControlsRow
-      ) {
-        alert(
-          "Couldn't safely identify the linked SKU input and + button. Nothing was clicked."
-        );
-
-        console.warn(
-          "[CatalogueTools] Linked SKU add-control scan failed.",
-          {
-            tableBody,
-            rowCount:
-              tableRows.length,
-            rows:
-              tableRows
-          }
-        );
-
-        return;
-      }
-
-      /*
-       * Final safety guard before each click.
-       */
-      const safelyClickAddButton = () => {
-        const currentButtonText =
-          getButtonText(addButton);
-
-        const stillSafe =
-          addButton.isConnected &&
+        const safe =
           addInput.isConnected &&
-          addControlsRow.isConnected &&
-          currentButtonText === "+" &&
-          addButton.closest("tr") ===
-            addControlsRow &&
-          addInput.closest("tr") ===
-            addControlsRow &&
-          addButton.parentElement ===
-            addInput.parentElement;
+          addButton.isConnected &&
+          addControlsContainer.isConnected &&
+          addInput.getAttribute("data-ng-model") ===
+            "vm.addedProduct" &&
+          addButton.getAttribute("data-ng-click") ===
+            "vm.addProduct()" &&
+          addControlsContainer.contains(addInput) &&
+          addControlsContainer.contains(addButton) &&
+          !!addButton.querySelector(
+            "i.fa-plus, .fa.fa-plus"
+          ) &&
+          !buttonText.includes("save") &&
+          !buttonText.includes("remove all") &&
+          !buttonText.includes("unlink all") &&
+          !buttonText.includes("delete");
 
-        if (!stillSafe) {
+        if (!safe) {
           console.error(
             "[CatalogueTools] Refusing to click an unverified button.",
             {
               addInput,
               addButton,
-              addControlsRow,
-              currentButtonText
+              addControlsContainer,
+              buttonText
             }
           );
 
@@ -371,10 +223,6 @@
         return true;
       };
 
-      /*
-       * Fetch rows again each time because Angular may add
-       * or replace rows while this tool is running.
-       */
       const getRows = () => [
         ...document.querySelectorAll(
           'tr[ng-repeat="entry in vm.group.productInfo"]'
@@ -449,8 +297,7 @@
           };
         }
 
-        const target =
-          norm(desiredText);
+        const target = norm(desiredText);
 
         const match = [
           ...select.options
@@ -470,17 +317,14 @@
           };
         }
 
-        if (
-          select.value === match.value
-        ) {
+        if (select.value === match.value) {
           return {
             ok: true,
             skipped: true
           };
         }
 
-        select.value =
-          match.value;
+        select.value = match.value;
 
         select.dispatchEvent(
           new Event("input", {
@@ -507,11 +351,8 @@
         const deadline =
           Date.now() + timeoutMs;
 
-        while (
-          Date.now() < deadline
-        ) {
-          const row =
-            findRowBySku(sku);
+        while (Date.now() < deadline) {
+          const row = findRowBySku(sku);
 
           if (row) {
             return row;
@@ -540,39 +381,29 @@
         )
       ];
 
-      /*
-       * Scan all selected options after updates and flag
-       * any option used by more than one SKU.
-       */
       const scanDuplicateOptions = () => {
-        const optionGroups =
-          new Map();
+        const groups = new Map();
 
         for (const row of getRows()) {
-          const sku =
-            getSkuFromRow(row);
-
+          const sku = getSkuFromRow(row);
           const select =
             row.querySelector("select");
 
           if (!select) continue;
 
-          const selectedOption =
+          const selected =
             select.options[
               select.selectedIndex
             ];
 
           const optionText = (
-            selectedOption?.label ||
-            selectedOption?.textContent ||
+            selected?.label ||
+            selected?.textContent ||
             ""
           )
             .replace(/\s+/g, " ")
             .trim();
 
-          /*
-           * Ignore blank/default options.
-           */
           if (
             !select.value ||
             !optionText
@@ -580,19 +411,16 @@
             continue;
           }
 
-          const key =
-            norm(optionText);
+          const key = norm(optionText);
 
-          if (
-            !optionGroups.has(key)
-          ) {
-            optionGroups.set(key, {
+          if (!groups.has(key)) {
+            groups.set(key, {
               optionText,
               occurrences: []
             });
           }
 
-          optionGroups
+          groups
             .get(key)
             .occurrences
             .push({
@@ -602,8 +430,8 @@
             });
         }
 
-        const duplicateOptions = [
-          ...optionGroups.values()
+        const duplicates = [
+          ...groups.values()
         ]
           .filter(
             (group) =>
@@ -619,43 +447,34 @@
             )
           );
 
-        for (
-          const group of duplicateOptions
-        ) {
-          const affectedSkus =
+        for (const group of duplicates) {
+          const skus =
             group.occurrences
               .map(
-                (occurrence) =>
-                  occurrence.sku ||
+                (item) =>
+                  item.sku ||
                   "Unknown SKU"
               )
               .join(", ");
 
           for (
-            const occurrence
+            const item
             of group.occurrences
           ) {
-            addOptionIssue(
-              occurrence.select,
-              DUPLICATE_OPTION_CLASS,
+            addIssue(
+              item.select,
+              DUPLICATE_CLASS,
               `Duplicate option: ${group.optionText} — ` +
-              `SKUs: ${affectedSkus}`
+              `SKUs: ${skus}`
             );
           }
         }
 
-        return duplicateOptions;
+        return duplicates;
       };
 
-      /*
-       * Input format:
-       *
-       * SKU <tab> Option
-       */
       const parseInput = (pasted) => {
-        const optionBySku =
-          new Map();
-
+        const optionBySku = new Map();
         const orderedSkus = [];
         const duplicateInputSkus = [];
 
@@ -692,12 +511,8 @@
               return;
             }
 
-            if (
-              optionBySku.has(sku)
-            ) {
-              duplicateInputSkus.push(
-                sku
-              );
+            if (optionBySku.has(sku)) {
+              duplicateInputSkus.push(sku);
             } else {
               orderedSkus.push(sku);
             }
@@ -743,20 +558,17 @@
               font-size:13px;
               line-height:1.35;
             ">
-              Paste tab-separated values copied
-              from Excel.
+              Paste tab-separated values copied from Excel.
 
               <br><br>
 
-              The first column must be
-              <b>SKU</b>. The second column is
-              the <b>Option</b> text.
+              The first column must be <b>SKU</b>.
+              The second column is the <b>Option</b> text.
 
               <br><br>
 
-              Existing SKUs will have their
-              options updated. Missing SKUs will
-              be added first and then updated.
+              Existing SKUs will be updated.
+              Missing SKUs will be added first and then updated.
 
               <code style="
                 display:block;
@@ -946,6 +758,32 @@
         duplicateOptions,
         dupeSkus
       }) => {
+        const tones = {
+          neutral: {
+            color: "#374151",
+            background: "#f9fafb",
+            border: "#e5e7eb"
+          },
+
+          success: {
+            color: "#166534",
+            background: "#f0fdf4",
+            border: "#bbf7d0"
+          },
+
+          warning: {
+            color: "#9a3412",
+            background: "#fff7ed",
+            border: "#ffedd5"
+          },
+
+          error: {
+            color: "#991b1b",
+            background: "#fef2f2",
+            border: "#fee2e2"
+          }
+        };
+
         const section = (
           title,
           items,
@@ -953,33 +791,7 @@
           tone,
           formatItem
         ) => {
-          const tones = {
-            neutral: {
-              color: "#374151",
-              background: "#f9fafb",
-              border: "#e5e7eb"
-            },
-
-            success: {
-              color: "#166534",
-              background: "#f0fdf4",
-              border: "#bbf7d0"
-            },
-
-            warning: {
-              color: "#9a3412",
-              background: "#fff7ed",
-              border: "#ffedd5"
-            },
-
-            error: {
-              color: "#991b1b",
-              background: "#fef2f2",
-              border: "#fee2e2"
-            }
-          };
-
-          const selectedTone =
+          const selected =
             tones[tone] ||
             tones.neutral;
 
@@ -993,13 +805,13 @@
           return `
             <div style="
               padding:10px;
-              border:1px solid ${selectedTone.border};
-              background:${selectedTone.background};
+              border:1px solid ${selected.border};
+              background:${selected.background};
               border-radius:12px;
             ">
               <div style="
                 font-weight:800;
-                color:${selectedTone.color};
+                color:${selected.color};
               ">
                 ${esc(title)}
               </div>
@@ -1023,21 +835,21 @@
           `;
         };
 
-        const missingOptionLines =
+        const missingLines =
           missingOptions.map(
             (item) =>
               `SKU ${item.sku} — ` +
               `wanted: "${item.desired}"`
           );
 
-        const duplicateOptionLines =
+        const duplicateLines =
           duplicateOptions.map(
             (group) =>
               `${group.optionText} — ` +
               group.occurrences
                 .map(
-                  (occurrence) =>
-                    `SKU ${occurrence.sku}`
+                  (item) =>
+                    `SKU ${item.sku}`
                 )
                 .join(", ")
           );
@@ -1089,15 +901,15 @@
           "",
           "Invalid option text:",
           ...(
-            missingOptionLines.length
-              ? missingOptionLines
+            missingLines.length
+              ? missingLines
               : ["(none)"]
           ),
           "",
           "Duplicate option selections:",
           ...(
-            duplicateOptionLines.length
-              ? duplicateOptionLines
+            duplicateLines.length
+              ? duplicateLines
               : ["(none)"]
           ),
           "",
@@ -1209,8 +1021,8 @@
                   `${group.optionText} — ` +
                   group.occurrences
                     .map(
-                      (occurrence) =>
-                        `SKU ${occurrence.sku}`
+                      (item) =>
+                        `SKU ${item.sku}`
                     )
                     .join(", ")
               )}
@@ -1295,7 +1107,7 @@
           .addEventListener(
             "click",
             () => {
-              clearOptionIssueHighlights();
+              clearIssueHighlights();
 
               const button =
                 reportModal.qs(
@@ -1325,9 +1137,7 @@
                     "[data-out]"
                   );
 
-                output.value =
-                  allText;
-
+                output.value = allText;
                 output.select();
 
                 document.execCommand(
@@ -1388,18 +1198,12 @@
             return;
           }
 
-          startButton.disabled =
-            true;
-
-          startButton.style.opacity =
-            "0.7";
-
+          startButton.disabled = true;
+          startButton.style.opacity = "0.7";
           startButton.style.cursor =
             "not-allowed";
 
-          const targetRows =
-            new Map();
-
+          const targetRows = new Map();
           const existingSkus = [];
           const newlyAddedSkus = [];
           const failedAdds = [];
@@ -1422,7 +1226,7 @@
 
           /*
            * Phase 1:
-           * Find existing rows or add missing SKUs.
+           * find existing rows or add missing SKUs.
            */
           for (const sku of orderedSkus) {
             if (cancelled) break;
@@ -1436,9 +1240,7 @@
                 existingRow
               );
 
-              existingSkus.push(
-                sku
-              );
+              existingSkus.push(sku);
             } else {
               addInput.focus();
 
@@ -1453,37 +1255,21 @@
               }
 
               const addedRow =
-                await waitForSkuRow(
-                  sku
-                );
+                await waitForSkuRow(sku);
 
-              if (addedRow) {
+              const finalRow =
+                addedRow ||
+                findRowBySku(sku);
+
+              if (finalRow) {
                 targetRows.set(
                   sku,
-                  addedRow
+                  finalRow
                 );
 
-                newlyAddedSkus.push(
-                  sku
-                );
+                newlyAddedSkus.push(sku);
               } else {
-                const lateRow =
-                  findRowBySku(sku);
-
-                if (lateRow) {
-                  targetRows.set(
-                    sku,
-                    lateRow
-                  );
-
-                  newlyAddedSkus.push(
-                    sku
-                  );
-                } else {
-                  failedAdds.push(
-                    sku
-                  );
-                }
+                failedAdds.push(sku);
               }
 
               await sleep(30);
@@ -1501,7 +1287,7 @@
 
           /*
            * Phase 2:
-           * Update options for existing and newly added rows.
+           * update options for existing and added rows.
            */
           for (const sku of orderedSkus) {
             if (cancelled) break;
@@ -1561,9 +1347,9 @@
                   desired
                 });
 
-                addOptionIssue(
+                addIssue(
                   select,
-                  INVALID_OPTION_CLASS,
+                  INVALID_CLASS,
                   `Invalid option: "${desired}" ` +
                   `was not found in this dropdown.`
                 );
@@ -1612,10 +1398,6 @@
             }
           }
 
-          /*
-           * Allow Angular to finish rendering selected
-           * values before checking for duplicates.
-           */
           await sleep(150);
 
           const duplicateOptions =
@@ -1629,24 +1411,16 @@
                 orderedSkus.length,
 
               updatedRows,
-
               changed,
-
               skipped
             },
 
             existingSkus,
-
             newlyAddedSkus,
-
             failedAdds,
-
             duplicateInputSkus,
-
             missingOptions,
-
             duplicateOptions,
-
             dupeSkus
           });
         }
