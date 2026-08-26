@@ -119,51 +119,84 @@
       clearIssueHighlights();
 
       /*
-       * Locate the SKU input and add button using the
-       * actual Angular attributes shown in the page HTML.
+       * The tool supports two linked-group screens:
+       *
+       * 1. Existing group:
+       *    Add missing SKUs with vm.addedProduct, then update options.
+       *
+       * 2. New group:
+       *    SKUs are already present in vm.selectedProducts, so only
+       *    update the matching Option dropdowns.
+       *
+       * Detect the new-group modal from its Group Name field and its
+       * table, while preserving the original existing-group selectors.
        */
+      const newGroupModal = [
+        ...document.querySelectorAll(".modal-body")
+      ].find((modalBody) =>
+        modalBody.querySelector(
+          'input[data-ng-model="vm.groupName"][placeholder="Enter the group name here"]'
+        ) &&
+        modalBody.querySelector(
+          'tr[data-ng-repeat="product in vm.selectedProducts"]'
+        )
+      );
+
+      const isNewGroupUI = !!newGroupModal;
+
       const form =
         document.querySelector(
           "#linkedSkuGroupCreateForm"
         );
 
-      if (!form) {
+      let addInput = null;
+      let addControlsContainer = null;
+      let addButton = null;
+
+      if (!isNewGroupUI) {
+        if (!form) {
+          alert(
+            "Couldn't find #linkedSkuGroupCreateForm."
+          );
+          return;
+        }
+
+        addInput =
+          form.querySelector(
+            'input[data-ng-model="vm.addedProduct"][placeholder="Add product by SKU"]'
+          );
+
+        if (!addInput) {
+          alert(
+            "Couldn't find the linked SKU input field."
+          );
+          return;
+        }
+
+        addControlsContainer =
+          addInput.closest(".input-group");
+
+        if (!addControlsContainer) {
+          alert(
+            "Couldn't find the linked SKU input group."
+          );
+          return;
+        }
+
+        addButton =
+          addControlsContainer.querySelector(
+            'button[data-ng-click="vm.addProduct()"]'
+          );
+
+        if (!addButton) {
+          alert(
+            "Couldn't find the linked SKU + button."
+          );
+          return;
+        }
+      } else if (!newGroupModal) {
         alert(
-          "Couldn't find #linkedSkuGroupCreateForm."
-        );
-        return;
-      }
-
-      const addInput =
-        form.querySelector(
-          'input[data-ng-model="vm.addedProduct"][placeholder="Add product by SKU"]'
-        );
-
-      if (!addInput) {
-        alert(
-          "Couldn't find the linked SKU input field."
-        );
-        return;
-      }
-
-      const addControlsContainer =
-        addInput.closest(".input-group");
-
-      if (!addControlsContainer) {
-        alert(
-          "Couldn't find the linked SKU input group."
-        );
-        return;
-      }
-
-      const addButton =
-        addControlsContainer.querySelector(
-          'button[data-ng-click="vm.addProduct()"]'
-        );
-
-      if (!addButton) {
-        alert(
-          "Couldn't find the linked SKU + button."
+          "Couldn't find the new linked-group modal."
         );
         return;
       }
@@ -173,6 +206,18 @@
        * matches the known add-product control.
        */
       const safelyClickAddButton = () => {
+        if (isNewGroupUI) {
+          console.error(
+            "[CatalogueTools] Refusing to click an add button in the new-group UI."
+          );
+
+          alert(
+            "Safety check failed: the new-group UI does not use the SKU add control. Nothing was clicked."
+          );
+
+          return false;
+        }
+
         const buttonText = (
           addButton.textContent ||
           addButton.getAttribute("aria-label") ||
@@ -223,11 +268,19 @@
         return true;
       };
 
-      const getRows = () => [
-        ...document.querySelectorAll(
-          'tr[ng-repeat="entry in vm.group.productInfo"]'
-        )
-      ];
+      const getRows = () => {
+        const selector = isNewGroupUI
+          ? 'tr[data-ng-repeat="product in vm.selectedProducts"]'
+          : 'tr[ng-repeat="entry in vm.group.productInfo"]';
+
+        const root = isNewGroupUI
+          ? newGroupModal
+          : document;
+
+        return [
+          ...root.querySelectorAll(selector)
+        ];
+      };
 
       if (!getRows().length) {
         alert(
@@ -240,14 +293,25 @@
       const getSkuFromRow = (row) => {
         if (!row) return "";
 
-        const cells =
-          row.querySelectorAll(
-            "td.ng-binding"
-          );
+        const cells = [
+          ...row.querySelectorAll("td")
+        ];
 
-        return cells.length >= 2
-          ? cells[1].textContent.trim()
-          : "";
+        if (cells.length < 2) return "";
+
+        /*
+         * Both supported UIs place SKU in the second binding cell.
+         * This also avoids reading the Option select's text.
+         */
+        const bindingCells = [
+          ...row.querySelectorAll("td.ng-binding")
+        ];
+
+        return (
+          bindingCells.length >= 2
+            ? bindingCells[1]
+            : cells[1]
+        ).textContent.trim();
       };
 
       const findRowBySku = (sku) =>
@@ -1241,6 +1305,13 @@
               );
 
               existingSkus.push(sku);
+            } else if (isNewGroupUI) {
+              /*
+               * New-group UI: rows already exist and there is no
+               * add-product control. Missing SKUs are reported rather
+               * than risking interaction with another page control.
+               */
+              failedAdds.push(sku);
             } else {
               addInput.focus();
 
