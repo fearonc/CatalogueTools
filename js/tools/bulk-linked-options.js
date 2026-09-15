@@ -1476,24 +1476,37 @@
 
           pasteModal.close();
 
-          showReport({
-            stats: {
-              inputSkus:
-                orderedSkus.length,
+          /*
+           * Only pop up the report when something actually needs
+           * attention. A clean run just closes quietly.
+           */
+          const hasIssues =
+            failedAdds.length > 0 ||
+            duplicateInputSkus.length > 0 ||
+            missingOptions.length > 0 ||
+            duplicateOptions.length > 0 ||
+            dupeSkus.length > 0;
 
-              updatedRows,
-              changed,
-              skipped
-            },
+          if (hasIssues) {
+            showReport({
+              stats: {
+                inputSkus:
+                  orderedSkus.length,
 
-            existingSkus,
-            newlyAddedSkus,
-            failedAdds,
-            duplicateInputSkus,
-            missingOptions,
-            duplicateOptions,
-            dupeSkus
-          });
+                updatedRows,
+                changed,
+                skipped
+              },
+
+              existingSkus,
+              newlyAddedSkus,
+              failedAdds,
+              duplicateInputSkus,
+              missingOptions,
+              duplicateOptions,
+              dupeSkus
+            });
+          }
         }
       );
     })();
