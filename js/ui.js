@@ -437,6 +437,29 @@
             RUN
           </div>
         </div>
+
+        <div class="tp-item" data-i="8">
+          <div class="tp-left">
+            <div class="tp-num">9</div>
+
+            <div>
+              <div class="tp-name">
+                Table Filter & Sort
+              </div>
+
+              <div class="tp-desc">
+                Filter and sort the table by column
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="tp-status"
+            data-s="tableFilter"
+          >
+            RUN
+          </div>
+        </div>
       </div>
 
       <div class="tp-toggles">
@@ -488,6 +511,11 @@
   CT.state.bulkLinkedOptionsOpen = false;
   CT.state.shadeDuplicateCheckOpen = false;
   CT.state.quoteWrapOpen = false;
+
+  CT.state.tableFilterOpen =
+    !!document.getElementById(
+      "ct-table-filter-bar"
+    );
 
   CT.state.auditSearchOpen =
     !!document.getElementById(
@@ -543,6 +571,11 @@
       '[data-s="jsonViewer"]'
     );
 
+  const statusTableFilter =
+    root.querySelector(
+      '[data-s="tableFilter"]'
+    );
+
   function refreshStatus() {
     const set = (element, isOn) => {
       if (!element) return;
@@ -596,6 +629,11 @@
     set(
       statusJsonViewer,
       CT.state.jsonViewerOpen === true
+    );
+
+    set(
+      statusTableFilter,
+      CT.state.tableFilterOpen === true
     );
   }
 
@@ -678,6 +716,10 @@
 
     if (i === 7) {
       CT.tools.runJsonViewerTool?.();
+    }
+
+    if (i === 8) {
+      CT.tools.runTableFilterTool?.();
     }
 
     refreshStatus();

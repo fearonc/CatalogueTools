@@ -32,6 +32,7 @@ const files = [
   "tools/audit-search.js",
   "tools/quote-wrap.js",
   "tools/json-viewer.js",
+  "tools/table-filter.js",
   "ui.js"
 ];
 
