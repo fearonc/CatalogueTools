@@ -686,6 +686,12 @@
   }
 
   function run(i) {
+    // Restore the table (unhide rows / original order) before any other tool
+    // runs, so bulk tools never work against a filtered or re-sorted table
+    if (i !== 8) {
+      CT.state.tableFilterCleanup?.();
+    }
+
     if (i === 0) {
       CT.tools.runBulkUpdateTool?.();
     }
