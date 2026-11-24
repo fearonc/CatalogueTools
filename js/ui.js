@@ -86,11 +86,85 @@
       color: #fff;
     }
 
-    #${PALETTE_ID} .tp-list {
+    /* ---- Page toggle (Catalogue / Supplier) ---- */
+    #${PALETTE_ID} .tp-pages {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin: 10px 12px 2px;
+      padding: 3px;
+      background: rgba(255,255,255,.06);
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    #${PALETTE_ID} .tp-pages-pill {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 3px;
+      width: calc(50% - 3px);
+      border-radius: 999px;
+      background: #3b4a6b;
+      box-shadow: 0 1px 4px rgba(0,0,0,.35);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    #${PALETTE_ID} .tp-pages button {
+      position: relative;
+      z-index: 1;
+      border: 0;
+      background: transparent;
+      color: #94a0b3;
+      font: 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: .03em;
+      padding: 8px 0;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color .2s;
+    }
+
+    #${PALETTE_ID} .tp-pages button:hover {
+      color: #dce3ee;
+    }
+
+    #${PALETTE_ID} .tp-pages button.on {
+      color: #fff;
+    }
+
+    /* ---- Sliding pages ---- */
+    #${PALETTE_ID} .tp-viewport {
+      position: relative;
+      overflow: hidden;
+      flex: 0 1 auto;
+      min-height: 0;
+      transition: height .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    #${PALETTE_ID} .tp-track {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 200%;
+      display: flex;
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+    }
+
+    #${PALETTE_ID} .tp-page {
+      flex: 0 0 50%;
+      width: 50%;
+      height: 100%;
       padding: 8px;
       overflow-y: auto;
-      flex: 1 1 auto;
-      min-height: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #${PALETTE_ID} .tp-pages-pill,
+      #${PALETTE_ID} .tp-viewport,
+      #${PALETTE_ID} .tp-track {
+        transition: none;
+      }
     }
 
     #${PALETTE_ID} .tp-item {
@@ -244,6 +318,123 @@
 
   document.head.appendChild(style);
 
+  /*
+   * Every tool in the toolkit.
+   *
+   * i    = the tool's number. Must match the `if (i === N)` block in run().
+   * key  = the name used by the RUN/ON badge (data-s).
+   *
+   * To add a tool: add an entry here, then list its `i` under the
+   * page(s) it should appear on in PAGES below.
+   */
+  const TOOLS = [
+    {
+      i: 0,
+      key: "bulk",
+      name: "Relationship Option Bulk Update",
+      desc: "Paste from Excel to update Relationship options"
+    },
+    {
+      i: 1,
+      key: "bulkAddAndUpdate",
+      name: "Bulk Add & Update Children",
+      desc: "Add and/or update child SKUs in bulk"
+    },
+    {
+      i: 2,
+      key: "bulkLinkedOptions",
+      name: "Bulk Add & Update Linked SKUs",
+      desc: "Add and/or update linked SKUs in bulk"
+    },
+    {
+      i: 3,
+      key: "shadeDuplicateCheck",
+      name: "Shade Duplicate Check",
+      desc: "Find duplicate HEX codes or shade names"
+    },
+    {
+      i: 4,
+      key: "imageTools",
+      name: "Matrix Image Tools",
+      desc: "Reorder images or free up / normalise slots"
+    },
+    {
+      i: 5,
+      key: "auditSearch",
+      name: "Audit History Search",
+      desc: "Search collapsed audit rows and navigate matches"
+    },
+    {
+      i: 6,
+      key: "quoteWrap",
+      name: 'Wrap for SQL "In" list',
+      desc: "Type or paste from Excel to wrap in quotes"
+    },
+    {
+      i: 7,
+      key: "jsonViewer",
+      name: "JSON Viewer",
+      desc: "Pretty JSON with search"
+    },
+    {
+      i: 8,
+      key: "tableFilter",
+      name: "Table Filter & Sort",
+      desc: "Filter and sort the table by column"
+    }
+  ];
+
+  /*
+   * Which tools each team page shows, in display order.
+   * A tool can be listed on more than one page.
+   * (The toggle and slide layout are built for exactly two pages.)
+   */
+  const PAGES = [
+    {
+      id: "catalogue",
+      label: "Catalogue",
+      tools: [0, 1, 2, 3, 5, 6, 7, 8]
+    },
+    {
+      id: "supplier",
+      label: "Supplier",
+      tools: [4, 7, 5]
+    }
+  ];
+
+  const esc = (value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const itemHTML = (tool, number) => `
+    <div class="tp-item" data-i="${tool.i}">
+      <div class="tp-left">
+        <div class="tp-num">${number}</div>
+
+        <div>
+          <div class="tp-name">${esc(tool.name)}</div>
+          <div class="tp-desc">${esc(tool.desc)}</div>
+        </div>
+      </div>
+
+      <div class="tp-status" data-s="${tool.key}">RUN</div>
+    </div>
+  `;
+
+  const pageHTML = (page) => `
+    <div class="tp-page" data-page="${page.id}">
+      <div class="tp-page-inner">
+        ${page.tools
+          .map((id) => TOOLS.find((tool) => tool.i === id))
+          .filter(Boolean)
+          .map((tool, index) => itemHTML(tool, index + 1))
+          .join("")}
+      </div>
+    </div>
+  `;
+
   const root = document.createElement("div");
   root.id = PALETTE_ID;
 
@@ -258,207 +449,14 @@
         <button class="tp-close" title="Close">×</button>
       </div>
 
-      <div class="tp-list">
-        <div class="tp-item active" data-i="0">
-          <div class="tp-left">
-            <div class="tp-num">1</div>
+      <div class="tp-pages" role="tablist" aria-label="Team page">
+        <div class="tp-pages-pill"></div>
+        ${PAGES.map((page, n) => `<button type="button" role="tab" data-page-btn="${n}">${esc(page.label)}</button>`).join("")}
+      </div>
 
-            <div>
-              <div class="tp-name">
-                Relationship Option Bulk Update
-              </div>
-
-              <div class="tp-desc">
-                Paste from Excel to update Relationship options
-              </div>
-            </div>
-          </div>
-
-          <div class="tp-status" data-s="bulk">RUN</div>
-        </div>
-
-        <div class="tp-item" data-i="1">
-          <div class="tp-left">
-            <div class="tp-num">2</div>
-
-            <div>
-              <div class="tp-name">
-                Bulk Add & Update Children
-              </div>
-
-              <div class="tp-desc">
-                Add and/or update child SKUs in bulk
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="bulkAddAndUpdate"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="2">
-          <div class="tp-left">
-            <div class="tp-num">3</div>
-
-            <div>
-              <div class="tp-name">
-                Bulk Add & Update Linked SKUs
-              </div>
-
-              <div class="tp-desc">
-                Add and/or update linked SKUs in bulk
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="bulkLinkedOptions"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="3">
-          <div class="tp-left">
-            <div class="tp-num">4</div>
-
-            <div>
-              <div class="tp-name">
-                Shade Duplicate Check
-              </div>
-
-              <div class="tp-desc">
-                Find duplicate HEX codes or shade names
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="shadeDuplicateCheck"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="4">
-          <div class="tp-left">
-            <div class="tp-num">5</div>
-
-            <div>
-              <div class="tp-name">
-                Matrix Image Tools
-              </div>
-
-              <div class="tp-desc">
-                Reorder images or free up / normalise slots
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="imageTools"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="5">
-          <div class="tp-left">
-            <div class="tp-num">6</div>
-
-            <div>
-              <div class="tp-name">
-                Audit History Search
-              </div>
-
-              <div class="tp-desc">
-                Search collapsed audit rows and navigate matches
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="auditSearch"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="6">
-          <div class="tp-left">
-            <div class="tp-num">7</div>
-
-            <div>
-              <div class="tp-name">
-                Wrap for SQL "In" list
-              </div>
-
-              <div class="tp-desc">
-                Type or paste from Excel to wrap in quotes
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="quoteWrap"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="7">
-          <div class="tp-left">
-            <div class="tp-num">8</div>
-
-            <div>
-              <div class="tp-name">
-                JSON Viewer
-              </div>
-
-              <div class="tp-desc">
-                Pretty JSON with search
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="jsonViewer"
-          >
-            RUN
-          </div>
-        </div>
-
-        <div class="tp-item" data-i="8">
-          <div class="tp-left">
-            <div class="tp-num">9</div>
-
-            <div>
-              <div class="tp-name">
-                Table Filter & Sort
-              </div>
-
-              <div class="tp-desc">
-                Filter and sort the table by column
-              </div>
-            </div>
-          </div>
-
-          <div
-            class="tp-status"
-            data-s="tableFilter"
-          >
-            RUN
-          </div>
+      <div class="tp-viewport">
+        <div class="tp-track">
+          ${PAGES.map(pageHTML).join("")}
         </div>
       </div>
 
@@ -532,61 +530,65 @@
     !!window.__thgReorderToolOpen;
 
   const statusBulk =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="bulk"]'
     );
 
   const statusBulkAddAndUpdate =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="bulkAddAndUpdate"]'
     );
 
   const statusBulkLinkedOptions =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="bulkLinkedOptions"]'
     );
 
   const statusShadeDuplicateCheck =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="shadeDuplicateCheck"]'
     );
 
   const statusImageTools =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="imageTools"]'
     );
 
   const statusAuditSearch =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="auditSearch"]'
     );
 
   const statusQuoteWrap =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="quoteWrap"]'
     );
 
   const statusJsonViewer =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="jsonViewer"]'
     );
 
   const statusTableFilter =
-    root.querySelector(
+    root.querySelectorAll(
       '[data-s="tableFilter"]'
     );
 
   function refreshStatus() {
-    const set = (element, isOn) => {
-      if (!element) return;
+    // A tool can appear on more than one page, so each status lookup
+    // returns every matching badge (a NodeList) and all are updated.
+    const set = (elements, isOn) => {
+      if (!elements) return;
 
-      element.textContent =
-        isOn ? "ON" : "RUN";
+      elements.forEach((element) => {
+        element.textContent =
+          isOn ? "ON" : "RUN";
 
-      element.classList.toggle(
-        "on",
-        !!isOn
-      );
+        element.classList.toggle(
+          "on",
+          !!isOn
+        );
+      });
     };
 
     set(
@@ -639,10 +641,6 @@
 
   CT.tools.refreshStatus = refreshStatus;
 
-  const items = [
-    ...root.querySelectorAll(".tp-item")
-  ];
-
   const closeBtn =
     root.querySelector(".tp-close");
 
@@ -669,20 +667,135 @@
       "sdp-pink-overlay-style"
     );
 
-  let idx = 0;
   let drag = false;
   let sx = 0;
   let sy = 0;
   let startL = 0;
   let startT = 0;
 
-  function sync() {
-    items.forEach((element, index) => {
-      element.classList.toggle(
-        "active",
-        index === idx
+  function setActiveItem(item) {
+    root
+      .querySelectorAll(".tp-item.active")
+      .forEach((element) => {
+        element.classList.remove("active");
+      });
+
+    item?.classList.add("active");
+  }
+
+  // ---- Pages (Catalogue / Supplier) ----
+  const pagesBar =
+    root.querySelector(".tp-pages");
+
+  const pill =
+    root.querySelector(".tp-pages-pill");
+
+  const pageBtns = [
+    ...root.querySelectorAll("[data-page-btn]")
+  ];
+
+  const viewport =
+    root.querySelector(".tp-viewport");
+
+  const track =
+    root.querySelector(".tp-track");
+
+  const pageEls = [
+    ...root.querySelectorAll(".tp-page")
+  ];
+
+  const PAGE_KEY = "__ct_active_page__";
+
+  // Remember the last page: first within this page load,
+  // then across page loads, so a team doesn't have to re-select it.
+  const readSavedPage = () => {
+    try {
+      const saved = Number(
+        localStorage.getItem(PAGE_KEY)
+      );
+
+      return Number.isInteger(saved) &&
+        saved >= 0 &&
+        saved < PAGES.length
+        ? saved
+        : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  let pageIdx = Number.isInteger(CT.state.activePage)
+    ? CT.state.activePage
+    : readSavedPage();
+
+  // Size the viewport to the active page so the box grows/shrinks
+  // smoothly instead of leaving empty space under the shorter page.
+  function fitHeight() {
+    const inner = pageEls[pageIdx]?.firstElementChild;
+
+    if (inner) {
+      viewport.style.height =
+        inner.offsetHeight + 16 + "px";
+    }
+  }
+
+  function showPage(n, animate = true) {
+    pageIdx = n;
+    CT.state.activePage = n;
+
+    try {
+      localStorage.setItem(PAGE_KEY, String(n));
+    } catch {}
+
+    const animated = [track, pill, viewport];
+
+    if (!animate) {
+      animated.forEach((element) => {
+        element.style.transition = "none";
+      });
+    }
+
+    track.style.transform =
+      `translateX(${-50 * n}%)`;
+
+    pill.style.transform =
+      `translateX(${100 * n}%)`;
+
+    pageBtns.forEach((button, index) => {
+      button.classList.toggle("on", index === n);
+
+      button.setAttribute(
+        "aria-selected",
+        String(index === n)
       );
     });
+
+    pageEls.forEach((page, index) => {
+      page.setAttribute(
+        "aria-hidden",
+        String(index !== n)
+      );
+
+      try {
+        page.inert = index !== n;
+      } catch {}
+    });
+
+    fitHeight();
+
+    setActiveItem(
+      pageEls[n]?.querySelector(".tp-item")
+    );
+
+    if (!animate) {
+      // Force a reflow so the un-animated position is applied
+      // before transitions are switched back on.
+      void track.offsetWidth;
+
+      animated.forEach((element) => {
+        element.style.transition = "";
+      });
+    }
   }
 
   function run(i) {
@@ -878,17 +991,17 @@
     delete CT.state.cleanup;
   }
 
-  items.forEach((element) => {
-    element.addEventListener(
-      "mouseenter",
-      () => {
-        idx = Number(
-          element.dataset.i
-        );
+  root.addEventListener("mouseover", (event) => {
+    const item =
+      event.target.closest(".tp-item");
 
-        sync();
-      }
-    );
+    if (item) setActiveItem(item);
+  });
+
+  pageBtns.forEach((button, index) => {
+    button.addEventListener("click", () => {
+      if (index !== pageIdx) showPage(index);
+    });
   });
 
   root.addEventListener(
@@ -923,6 +1036,8 @@
     onKey,
     true
   );
+
+  showPage(pageIdx, false);
 
   refreshStatus();
 
