@@ -16,7 +16,9 @@ Adding a tool means touching **three files**:
 |---|------|-------------|
 | 1 | `js/tools/your-tool.js` | Save the tool's JavaScript here (a new file) |
 | 2 | `js/bootstrap.js` | Add **1 line** so the tool gets loaded |
-| 3 | `js/ui.js` | Add **5 small pieces** so the tool appears in the menu and its RUN/ON badge works |
+| 3 | `js/ui.js` | Add **5 small pieces** so the tool appears on the right team page(s) and its RUN/ON badge works |
+
+The toolkit menu has two team pages, **Catalogue** and **Supplier**, with a toggle switch above the tool list. Which tools show on which page is set in `js/ui.js` (Step 4, piece (a)).
 
 The tool's JavaScript must also follow a few house rules (names, open/close flags). **Step 2 gives you an AI prompt that checks and fixes this for you, and writes the exact text to paste into `bootstrap.js` and `ui.js`.** That is the easiest route.
 
@@ -51,15 +53,18 @@ Every tool has to follow some house rules so the menu can find it and show wheth
 
 **First, find your "last number":**
 1. Open `js/ui.js` in the repo.
-2. Press `Ctrl+F` (or `Cmd+F` on Mac) and search for `data-i=`.
-3. Jump to the **last** result. Note the number in quotes. For example, `data-i="8"` means your last number is **8**.
+2. Press `Ctrl+F` (or `Cmd+F` on Mac) and search for `const TOOLS`.
+3. Look at the **last** entry in that list. Note the number after `i:`. For example, `i: 8,` means your last number is **8**.
 
-**Then copy this whole prompt**, replace `LAST_NUMBER_HERE` with that number, and paste your tool's code at the very bottom:
+**Then decide which team page(s) the tool belongs on:** Catalogue, Supplier, or both.
+
+**Then copy this whole prompt**, replace `LAST_NUMBER_HERE` with that number, replace `PAGES_HERE` with `Catalogue`, `Supplier` or `Catalogue and Supplier`, and paste your tool's code at the very bottom:
 
 ````
 I'm adding a new tool to a browser toolkit (a bookmarklet that loads JavaScript files from GitHub). Below is the JavaScript for my new tool. Please do ALL of the parts below.
 
 The highest existing menu number in ui.js is: LAST_NUMBER_HERE
+The team page(s) this tool should appear on: PAGES_HERE
 
 === PART 1: Check and fix the tool ===
 Every tool file in this toolkit must follow these rules. Check my code against each rule, fix anything that doesn't comply, and otherwise leave what the tool does unchanged.
@@ -107,25 +112,18 @@ Give me the single line to add to the "files" list in bootstrap.js, in this form
   "tools/FILE-NAME.js",
 
 === PART 4: Pieces for ui.js ===
-Give me these 5 pieces, filled in for my tool, ready to copy and paste. Use data-i = (highest existing number + 1) and show number = (highest existing number + 2).
+Give me these 5 pieces, filled in for my tool, ready to copy and paste. Use i = (highest existing number + 1).
 
-(a) Menu item:
-<div class="tp-item" data-i="NEW_I">
-  <div class="tp-left">
-    <div class="tp-num">NEW_SHOWN_NUMBER</div>
-    <div>
-      <div class="tp-name">MENU NAME</div>
-      <div class="tp-desc">MENU DESCRIPTION</div>
-    </div>
-  </div>
-  <div class="tp-status" data-s="NAME">RUN</div>
-</div>
+(a) Menu entry. This has two parts:
+  Part 1 - one new entry to add at the END of the TOOLS list (tell me to put a comma after the entry above it if it doesn't have one):
+    { i: NEW_I, key: "NAME", name: "MENU NAME", desc: "MENU DESCRIPTION" }
+  Part 2 - tell me which page(s) NEW_I goes on, by adding NEW_I to the `tools: [...]` list of the matching page(s) in PAGES (Catalogue = "catalogue", Supplier = "supplier"). Show each page's list exactly as it should look after the change.
 
 (b) State line:
 CT.state.NAMEOpen = false;
 
 (c) Status element line:
-const statusNAME = root.querySelector('[data-s="NAME"]');
+const statusNAME = root.querySelectorAll('[data-s="NAME"]');
 
 (d) Badge line:
 set(statusNAME, CT.state.NAMEOpen === true);
@@ -180,18 +178,45 @@ Don't commit yet. Do Step 4 first, then commit both files.
 
 Open `js/ui.js` and click the **pencil icon** (Edit). Use `Ctrl+F` (or `Cmd+F`) to find each spot below. Paste the matching piece from the AI's reply (Part 4, items a to e).
 
-#### (a) The menu item
+#### (a) The menu entry (two small edits)
 
-1. Search for `tp-toggles`.
-2. Just above it you'll see two lines containing `</div>`:
+**Part 1 – add it to the tool list**
 
-```html
-        </div>        <-- ends the LAST menu item
-      </div>          <-- ends the whole menu list
-      <div class="tp-toggles">   <-- the thing you searched for
+1. Search for `const TOOLS`.
+2. Scroll to the **last** entry in that list (the last `{ ... }` block before the `];`).
+3. Paste your new entry straight after it. If the entry above doesn't end in a comma, add one:
+
+```js
+    {
+      i: 8,
+      key: "tableFilter",
+      name: "Table Filter & Sort",
+      desc: "Filter and sort the table by column"
+    },                                                                  // <-- comma added
+    { i: 9, key: "yourTool", name: "Your Tool", desc: "What it does" }  // <-- your new entry
+  ];
 ```
 
-3. Paste the **menu item** between those two `</div>` lines. That is, **after** the first one, **before** the second.
+**Part 2 – put it on the right page(s)**
+
+1. Search for `const PAGES`.
+2. You'll see one block per team (Catalogue and Supplier), each with a `tools: [...]` list of tool numbers.
+3. Add your tool's number to the list for each team that should see it. The order of the numbers is the order shown in the menu.
+
+```js
+    {
+      id: "catalogue",
+      label: "Catalogue",
+      tools: [0, 1, 2, 3, 5, 6, 7, 8, 9]   // <-- 9 added here
+    },
+    {
+      id: "supplier",
+      label: "Supplier",
+      tools: [4, 7, 5]                       // <-- left alone, so not shown to Supplier
+    }
+```
+
+A tool can be listed on both pages. The numbers shown beside each tool in the menu (1, 2, 3…) are worked out automatically for each page.
 
 #### (b) The state line
 
@@ -260,7 +285,8 @@ Click **Commit changes** once you've done all of Steps 3 and 4.
 |---|---|
 | The toolkit doesn't open at all, or shows nothing | A typo in `ui.js` (missing bracket, missing quote). **Fix:** open the file's **History** on GitHub and revert to the last working version, then redo Step 4 more carefully |
 | An alert says "Failed to load tools/…" | The file name in `bootstrap.js` doesn't exactly match the file in `js/tools/` (check capitals and dashes) |
-| Menu item appears but clicking does nothing | The number in `if (i === N)` (piece e) doesn't match the `data-i="N"` in the menu item (piece a), or the run function name doesn't match the one in the tool file |
+| Menu item appears but clicking does nothing | The number in `if (i === N)` (piece e) doesn't match the `i: N` in the TOOLS entry (piece a), or the run function name doesn't match the one in the tool file |
+| Tool doesn't appear in the menu | Its number wasn't added to the `tools: [...]` list of the right page in `PAGES` (piece a, part 2), or the TOOLS entry is missing a comma |
 | Tool works, but the badge always says RUN | The state flag (piece b and d) doesn't exactly match the name in the tool file (`CT.state.NAMEOpen`), or the tool never calls `setToolOpen(true)` |
 | Badge stays ON after closing | The tool isn't calling `setToolOpen(false)` on every way of closing |
 | Tool changes the table and rows stay hidden/out of order after closing | The tool is missing its clean-up function (Rule 8). Re-run the AI prompt in Step 2 |
@@ -282,7 +308,8 @@ For reference, here are the values used when "Table Filter & Sort" was added.
 | Run function | `CT.tools.runTableFilterTool` |
 | State flag | `CT.state.tableFilterOpen` |
 | Status key | `tableFilter` |
-| `data-i` | `8` (shown as number `9`) |
+| `i` | `8` |
+| Page(s) | Catalogue |
 
 `bootstrap.js` line:
 ```js
@@ -290,22 +317,17 @@ For reference, here are the values used when "Table Filter & Sort" was added.
 ```
 
 `ui.js` pieces:
-```html
-<div class="tp-item" data-i="8">
-  <div class="tp-left">
-    <div class="tp-num">9</div>
-    <div>
-      <div class="tp-name">Table Filter & Sort</div>
-      <div class="tp-desc">Filter and sort the table by column</div>
-    </div>
-  </div>
-  <div class="tp-status" data-s="tableFilter">RUN</div>
-</div>
+```js
+// (a) part 1 – added to the end of the TOOLS list
+{ i: 8, key: "tableFilter", name: "Table Filter & Sort", desc: "Filter and sort the table by column" }
+
+// (a) part 2 – 8 added to the Catalogue page's list in PAGES
+tools: [0, 1, 2, 3, 5, 6, 7, 8]
 ```
 ```js
 CT.state.tableFilterOpen = false;
 
-const statusTableFilter = root.querySelector('[data-s="tableFilter"]');
+const statusTableFilter = root.querySelectorAll('[data-s="tableFilter"]');
 
 set(statusTableFilter, CT.state.tableFilterOpen === true);
 
