@@ -159,6 +159,126 @@
       overflow-y: auto;
     }
 
+    /* ---- Pink theme (Supplier page) ---- */
+    @media (prefers-reduced-motion: no-preference) {
+      #${PALETTE_ID} .tp-box,
+      #${PALETTE_ID} .tp-head,
+      #${PALETTE_ID} .tp-title,
+      #${PALETTE_ID} .tp-close,
+      #${PALETTE_ID} .tp-item,
+      #${PALETTE_ID} .tp-num,
+      #${PALETTE_ID} .tp-desc,
+      #${PALETTE_ID} .tp-status,
+      #${PALETTE_ID} .tp-toggles,
+      #${PALETTE_ID} .tp-toggle-label,
+      #${PALETTE_ID} .tp-slider,
+      #${PALETTE_ID} .tp-foot,
+      #${PALETTE_ID} .tp-pages,
+      #${PALETTE_ID} .tp-pages-pill {
+        transition:
+          background-color .28s ease,
+          border-color .28s ease,
+          color .28s ease,
+          box-shadow .28s ease,
+          transform .28s cubic-bezier(.4,0,.2,1);
+      }
+    }
+
+    /* Applied while opening on a remembered page so it doesn't fade in */
+    #${PALETTE_ID}.tp-instant,
+    #${PALETTE_ID}.tp-instant * {
+      transition: none !important;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-box {
+      background: rgba(36,22,29,.96);
+      color: #fff6fa;
+      border-color: rgba(255,153,202,.38);
+      box-shadow: 0 20px 60px rgba(70,10,40,.55);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-head {
+      border-bottom-color: rgba(255,153,202,.24);
+      color: #f6c4d8;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-close {
+      background: rgba(255,153,202,.16);
+      color: #ffe2ee;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-close:hover {
+      background: rgba(255,153,202,.30);
+      color: #fff;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-item {
+      color: #ffe2ee;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-item:hover,
+    #${PALETTE_ID}.tp-pink .tp-item.active {
+      background: rgba(255,153,202,.15);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-num {
+      background: rgba(255,153,202,.24);
+      color: #fff;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-desc {
+      color: #d9a3bd;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-status {
+      background: rgba(255,153,202,.20);
+      color: #ffe2ee;
+    }
+
+    /* Keep the ON badge green so it's still obvious on pink */
+    #${PALETTE_ID}.tp-pink .tp-status.on {
+      background: rgba(80,200,120,.24);
+      color: #9ff0b3;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-toggles {
+      border-top-color: rgba(255,153,202,.24);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-toggle-label {
+      color: #ffe2ee;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-slider {
+      background-color: rgba(255,153,202,.26);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-foot {
+      border-top-color: rgba(255,153,202,.24);
+      color: #d9a3bd;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-pages {
+      background: rgba(255,153,202,.14);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-pages-pill {
+      background: #de7fb0;
+      box-shadow: 0 1px 6px rgba(120,20,70,.45);
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-pages button {
+      color: #e7b3cb;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-pages button:hover {
+      color: #fff6fa;
+    }
+
+    #${PALETTE_ID}.tp-pink .tp-pages button.on {
+      color: #fff;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       #${PALETTE_ID} .tp-pages-pill,
       #${PALETTE_ID} .tp-viewport,
@@ -398,6 +518,7 @@
     {
       id: "supplier",
       label: "Supplier",
+      theme: "pink",
       tools: [4, 7, 5]
     }
   ];
@@ -750,10 +871,18 @@
     const animated = [track, pill, viewport];
 
     if (!animate) {
+      root.classList.add("tp-instant");
+
       animated.forEach((element) => {
         element.style.transition = "none";
       });
     }
+
+    // A page can set `theme: "pink"` in PAGES to recolour the whole menu
+    root.classList.toggle(
+      "tp-pink",
+      PAGES[n]?.theme === "pink"
+    );
 
     track.style.transform =
       `translateX(${-50 * n}%)`;
@@ -791,6 +920,8 @@
       // Force a reflow so the un-animated position is applied
       // before transitions are switched back on.
       void track.offsetWidth;
+
+      root.classList.remove("tp-instant");
 
       animated.forEach((element) => {
         element.style.transition = "";
