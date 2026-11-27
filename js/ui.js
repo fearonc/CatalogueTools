@@ -499,8 +499,8 @@
     {
       i: 8,
       key: "tableFilter",
-      name: "Table Filter & Sort",
-      desc: "Filter and sort the table by column"
+      name: "Relationship Filter & Sort",
+      desc: "Filter and sort the relationship variant options columns"
     }
   ];
 
